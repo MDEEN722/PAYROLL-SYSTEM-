@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Payroll System</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="login" class="login">
+    <div class="card login-card">
+      <div class="brand">PAYROLL<span>PRO</span></div>
+      <h1>Welcome back</h1>
+      <p class="muted">Sign in to manage your payroll.</p>
+      <form id="loginForm">
+        <input id="email" type="email" placeholder="Email" value="admin@example.com" required>
+        <input id="password" type="password" placeholder="Password" value="ChangeMe123!" required>
+        <button>Sign in</button>
+      </form>
+      <p id="loginError" class="error"></p>
+    </div>
+  </div>
+
+  <div id="app" class="hidden">
+    <header class="topbar">
+      <div><strong>PAYROLL<span>PRO</span></strong><small> Payroll Management</small></div>
+      <button id="logout" class="secondary">Logout</button>
+    </header>
+    <main class="container">
+      <section class="hero">
+        <div><h1>Payroll Dashboard</h1><p>Manage workers and process payroll securely.</p></div>
+        <button id="payAll" class="pay">Pay All Workers</button>
+      </section>
+
+      <section class="stats">
+        <div class="stat"><span>Active Workers</span><b id="workersCount">0</b></div>
+        <div class="stat"><span>Payment Batches</span><b id="batchesCount">0</b></div>
+        <div class="stat"><span>Total Paid</span><b id="paidTotal">₦0</b></div>
+        <div class="stat"><span>Pending Payments</span><b id="pendingCount">0</b></div>
+      </section>
+
+      <section class="grid">
+        <div class="card">
+          <div class="section-head"><h2>Workers</h2><button id="refreshWorkers" class="secondary">Refresh</button></div>
+          <form id="workerForm" class="form-grid">
+            <input id="first_name" placeholder="First name" required>
+            <input id="last_name" placeholder="Last name" required>
+            <input id="emailW" type="email" placeholder="Email">
+            <input id="phone" placeholder="Phone">
+            <input id="bank_code" placeholder="Bank code" required>
+            <input id="account_number" placeholder="Account number" required>
+            <input id="account_name" placeholder="Account name" required>
+            <input id="salary" type="number" min="1" placeholder="Monthly salary" required>
+            <button>Add Worker</button>
+          </form>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Account</th><th>Salary</th><th>Status</th></tr></thead><tbody id="workersTable"></tbody></table></div>
+        </div>
+
+        <div class="card">
+          <div class="section-head"><h2>Payment Batches</h2><button id="createBatch" class="secondary">Create Batch</button></div>
+          <div class="table-wrap"><table><thead><tr><th>Batch</th><th>Workers</th><th>Amount</th><th>Status</th></tr></thead><tbody id="batchesTable"></tbody></table></div>
+          <p class="notice">Sandbox mode: Pay All Workers uses a mock provider and does not transfer real money.</p>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
