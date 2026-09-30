@@ -373,4 +373,8 @@ app.get("/api/audit-logs", auth, requireRole("admin"), (req, res) => {
 
 app.get("*", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 
-app.listen(PORT, () => console.log(`Payroll System running on http://localhost:${PORT}`));
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`Payroll System running on http://localhost:${PORT}`));
+}
+
+module.exports = app;
