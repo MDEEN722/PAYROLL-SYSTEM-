@@ -212,6 +212,16 @@ $("usersTable").addEventListener("click",async e=>{
   try{await api(`/api/users/${id}/role`,{method:"PATCH",body:JSON.stringify({role})});await loadUsers();}catch(err){alert(err.message);}
 });
 
+$("reportsButton").onclick=async()=>{
+  try{
+    const rows=await api("/api/reports/payroll");
+    $("reportsTable").innerHTML=rows.length ? rows.map(r=>`<tr><td>${escapeHtml(r.batch_name)}</td><td>${escapeHtml(r.payment_date)}</td><td>${r.total_workers}</td><td>${money(r.paid_amount)}</td><td>${r.success_count||0}</td><td>${r.failed_count||0}</td><td>${r.pending_count||0}</td><td><span class="status ${escapeHtml(r.status)}">${escapeHtml(r.status)}</span></td></tr>`).join("") : '<tr><td colspan="8" class="empty">No payroll history yet.</td></tr>';
+    $("reportsPanel").classList.remove("hidden");
+    $("reportsPanel").scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(e){alert(e.message);}
+};
+$("closeReports").onclick=()=>$("reportsPanel").classList.add("hidden");
+
 $("auditButton").onclick=async()=>{
   try{
     const rows=await api("/api/audit-logs");
