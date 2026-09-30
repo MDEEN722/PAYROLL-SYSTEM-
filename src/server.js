@@ -134,11 +134,12 @@ app.post("/api/batches", auth, requireRole("admin","payroll_officer"), (req, res
   const payment_date = String(req.body.payment_date || "").trim();
   if (!batch_name) return res.status(400).json({ error: "Batch name is required." });
   if (payment_date && !/^\d{4}-\d{2}-\d{2}$/.test(payment_date)) return res.status(400).json({ error: "Payment date must be YYYY-MM-DD." });
-  const workers = db.prepare("SELECT id, salary FROM workers WHERE status='active'").all();
-  if (!workers.length) return res.status(400).json({ error: "No active workers available." });
-  if (workers.length > MAX_BATCH_WORKERS) {
-    return res.status(400).json({ error: `A batch can contain at most ${MAX_BATCH_WORKERS} workers.` });
-  }
+  const requestedIds = Array.isArray(req.body.worker_ids) ? [...new Set(req.body.worker_ids.map(Number).filter(Number.isInteger))] : [];
+  if (!requestedIds.length) return res.status(400).json({ error: "Select at least one worker for this batch." });
+  if (requestedIds.length > MAX_BATCH_WORKERS) return res.status(400).json({ error: `A batch can contain at most ${MAX_BATCH_WORKERS} workers.` });
+  const placeholders = requestedIds.map(() => "?").join(",");
+  const workers = db.prepare(`SELECT id, salary FROM workers WHERE status='active' AND id IN (${placeholders})`).all(...requestedIds);
+  if (workers.length !== requestedIds.length) return res.status(400).json({ error: "One or more selected workers are unavailable or inactive." });
 
   const create = db.transaction(() => {
     const total = workers.reduce((sum, w) => sum + Number(w.salary), 0);
