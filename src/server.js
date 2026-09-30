@@ -219,6 +219,37 @@ app.post("/api/webhooks/payment", (req, res) => {
   res.json({ received: true });
 });
 
+app.get("/api/users", auth, requireRole("admin"), (req, res) => {
+  res.json(db.prepare("SELECT id,name,email,role,created_at FROM users ORDER BY id DESC").all());
+});
+
+app.post("/api/users", auth, requireRole("admin"), (req, res) => {
+  const name = String(req.body.name || "").trim();
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+  const role = String(req.body.role || "payroll_officer");
+  if (!name || !email || !password) return res.status(400).json({ error: "Name, email and password are required." });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: "Enter a valid email address." });
+  if (password.length < 10) return res.status(400).json({ error: "Password must be at least 10 characters." });
+  if (!["admin","payroll_officer"].includes(role)) return res.status(400).json({ error: "Invalid user role." });
+  if (db.prepare("SELECT id FROM users WHERE lower(email)=?").get(email)) return res.status(409).json({ error: "A user with this email already exists." });
+  const hash = bcrypt.hashSync(password, 12);
+  const result = db.prepare("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)").run(name,email,hash,role);
+  audit(req.session.user.id, "CREATE_USER", `Created ${role} user ID ${result.lastInsertRowid}`);
+  res.status(201).json({ id: result.lastInsertRowid });
+});
+
+app.patch("/api/users/:id/role", auth, requireRole("admin"), (req, res) => {
+  const role = String(req.body.role || "");
+  if (!["admin","payroll_officer"].includes(role)) return res.status(400).json({ error: "Invalid user role." });
+  const target = db.prepare("SELECT id FROM users WHERE id=?").get(req.params.id);
+  if (!target) return res.status(404).json({ error: "User not found." });
+  if (Number(req.params.id) === req.session.user.id && role !== "admin") return res.status(400).json({ error: "You cannot remove your own admin access." });
+  db.prepare("UPDATE users SET role=? WHERE id=?").run(role,req.params.id);
+  audit(req.session.user.id, "CHANGE_USER_ROLE", `User ID ${req.params.id} changed to ${role}`);
+  res.json({ ok: true });
+});
+
 app.get("/api/audit-logs", auth, requireRole("admin"), (req, res) => {
   res.json(db.prepare(`
     SELECT a.*, u.name FROM audit_logs a
