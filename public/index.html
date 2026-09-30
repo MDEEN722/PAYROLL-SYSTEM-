@@ -24,7 +24,7 @@
   <div id="app" class="hidden">
     <header class="topbar">
       <div><strong>PAYROLL<span>PRO</span></strong><small> Payroll Management</small></div>
-      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="usersButton" class="secondary">Users</button><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
+      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="reportsButton" class="secondary">Reports</button><button id="usersButton" class="secondary">Users</button><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
     </header>
     <main class="container">
       <section class="hero">
@@ -75,6 +75,11 @@
           <div class="review-actions"><button id="submitApproval" class="secondary hidden">Submit for Approval</button><button id="approveBatch" class="pay hidden">Approve</button><button id="rejectBatch" class="danger hidden">Reject</button><button id="closeReview" class="secondary">Close</button></div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Worker</th><th>Account Name</th><th>Amount</th><th>Status</th><th>Reference / Error</th></tr></thead><tbody id="paymentsTable"></tbody></table></div>
+      </section>
+
+      <section id="reportsPanel" class="card review-card hidden">
+        <div class="section-head"><div><h2>Payroll History</h2><p class="muted">Batch totals and payment results.</p></div><button id="closeReports" class="secondary">Close</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Batch</th><th>Date</th><th>Workers</th><th>Paid</th><th>Successful</th><th>Failed</th><th>Pending</th><th>Status</th></tr></thead><tbody id="reportsTable"></tbody></table></div>
       </section>
 
       <section id="usersPanel" class="card review-card hidden">
