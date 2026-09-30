@@ -192,9 +192,15 @@ $("approveBatch").onclick=()=>{if(confirm("Approve this payroll batch for paymen
 $("rejectBatch").onclick=()=>{if(confirm("Reject this batch and return it to draft?"))batchAction("reject");};
 $("closeReview").onclick=()=>{$("batchReview").classList.add("hidden");selectedBatchId=null;$("payAll").classList.add("hidden");batches();};
 
+$("passwordButton").onclick=async()=>{
+  const current=prompt("Current password:"); if(current===null)return;
+  const next=prompt("New password (10+ characters):"); if(next===null)return;
+  try{await api("/api/change-password",{method:"POST",body:JSON.stringify({current_password:current,new_password:next})});alert("Password changed successfully.");}catch(e){alert(e.message);}
+};
+
 async function loadUsers(){
   const rows=await api("/api/users");
-  $("usersTable").innerHTML=rows.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td><span class="status">${escapeHtml(u.role)}</span></td><td>${escapeHtml(u.created_at)}</td><td>${u.id===currentUser.id ? "Current user" : `<button class="secondary small-btn" data-role-user="${u.id}" data-role="${u.role==="admin"?"payroll_officer":"admin"}">Make ${u.role==="admin"?"Payroll Officer":"Admin"}</button>`}</td></tr>`).join("");
+  $("usersTable").innerHTML=rows.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td><span class="status">${escapeHtml(u.role)}</span></td><td><span class="status ${escapeHtml(u.status)}">${escapeHtml(u.status)}</span></td><td>${escapeHtml(u.created_at)}</td><td>${u.id===currentUser.id ? "Current user" : `<button class="secondary small-btn" data-role-user="${u.id}" data-role="${u.role==="admin"?"payroll_officer":"admin"}">Make ${u.role==="admin"?"Payroll Officer":"Admin"}</button> <button class="secondary small-btn" data-reset-user="${u.id}">Reset Password</button> <button class="${u.status==="active"?"danger":"secondary"} small-btn" data-status-user="${u.id}" data-status="${u.status==="active"?"inactive":"active"}">${u.status==="active"?"Deactivate":"Activate"}</button>`}</td></tr>`).join("");
 }
 $("usersButton").onclick=async()=>{try{await loadUsers();$("usersPanel").classList.remove("hidden");$("usersPanel").scrollIntoView({behavior:"smooth"});}catch(e){alert(e.message);}};
 $("closeUsers").onclick=()=>$("usersPanel").classList.add("hidden");
@@ -206,6 +212,16 @@ $("userForm").addEventListener("submit",async e=>{
   }catch(err){alert(err.message);}
 });
 $("usersTable").addEventListener("click",async e=>{
+  const resetId=e.target.dataset.resetUser;
+  if(resetId){
+    const password=prompt("New temporary password (10+ characters):"); if(!password)return;
+    try{await api(`/api/users/${resetId}/reset-password`,{method:"POST",body:JSON.stringify({password})});alert("Password reset successfully.");}catch(err){alert(err.message);} return;
+  }
+  const statusId=e.target.dataset.statusUser, status=e.target.dataset.status;
+  if(statusId){
+    if(!confirm(`${status==="inactive"?"Deactivate":"Activate"} this user?`))return;
+    try{await api(`/api/users/${statusId}/status`,{method:"PATCH",body:JSON.stringify({status})});await loadUsers();}catch(err){alert(err.message);} return;
+  }
   const id=e.target.dataset.roleUser, role=e.target.dataset.role;
   if(!id)return;
   if(!confirm(`Change this user's role to ${role}?`))return;
