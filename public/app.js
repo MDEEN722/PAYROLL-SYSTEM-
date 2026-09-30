@@ -5,6 +5,7 @@ let selectedBatchId = null;
 let editingWorkerId = null;
 let workerCache = [];
 let currentUser = null;
+let selectedWorkerIds = new Set();
 
 async function api(url, options={}) {
   const res = await fetch(url, { headers: {"Content-Type":"application/json"}, ...options });
@@ -129,14 +130,37 @@ $("batchesTable").addEventListener("click", e=>{
   if(id) reviewBatch(id).catch(err=>alert(err.message));
 });
 
+function updateSelectionSummary(){
+  const chosen=workerCache.filter(w=>selectedWorkerIds.has(w.id));
+  $("selectionSummary").textContent=`${chosen.length} selected • ${money(chosen.reduce((sum,w)=>sum+Number(w.salary),0))}`;
+}
+function renderBatchPicker(){
+  const active=workerCache.filter(w=>w.status==="active");
+  $("batchWorkerList").innerHTML=active.length ? active.map(w=>`<label class="picker-row"><input type="checkbox" data-pick-worker="${w.id}" ${selectedWorkerIds.has(w.id)?"checked":""}><span><strong>${escapeHtml(w.first_name)} ${escapeHtml(w.last_name)}</strong><small>${escapeHtml(w.account_name)} • ${money(w.salary)}</small></span></label>`).join("") : '<p class="empty">No active workers available.</p>';
+  updateSelectionSummary();
+}
 $("createBatch").onclick=async()=>{
-  const name=prompt("Batch name:","September Payroll");
-  if(!name)return;
+  await workers();
+  selectedWorkerIds=new Set(workerCache.filter(w=>w.status==="active").map(w=>w.id));
+  renderBatchPicker();
+  $("batchBuilder").classList.remove("hidden");
+};
+$("batchWorkerList").addEventListener("change",e=>{
+  const id=Number(e.target.dataset.pickWorker); if(!id)return;
+  if(e.target.checked)selectedWorkerIds.add(id);else selectedWorkerIds.delete(id);
+  updateSelectionSummary();
+});
+$("selectAllWorkers").onclick=()=>{selectedWorkerIds=new Set(workerCache.filter(w=>w.status==="active").map(w=>w.id));renderBatchPicker();};
+$("clearWorkers").onclick=()=>{selectedWorkerIds.clear();renderBatchPicker();};
+$("cancelBatch").onclick=()=>{$("batchBuilder").classList.add("hidden");selectedWorkerIds.clear();};
+$("confirmBatch").onclick=async()=>{
+  if(!selectedWorkerIds.size){alert("Select at least one worker.");return;}
+  const name=prompt("Batch name:","September Payroll"); if(!name)return;
   try{
-    const created=await api("/api/batches",{method:"POST",body:JSON.stringify({batch_name:name,payment_date:new Date().toISOString().slice(0,10)})});
-    await Promise.all([dashboard(),batches()]);
-    await reviewBatch(created.id);
-    alert("Batch created. Review it before payment.");
+    const created=await api("/api/batches",{method:"POST",body:JSON.stringify({batch_name:name,payment_date:new Date().toISOString().slice(0,10),worker_ids:[...selectedWorkerIds]})});
+    $("batchBuilder").classList.add("hidden"); selectedWorkerIds.clear();
+    await Promise.all([dashboard(),batches()]); await reviewBatch(created.id);
+    alert("Batch created with the selected workers.");
   }catch(e){alert(e.message);}
 };
 
