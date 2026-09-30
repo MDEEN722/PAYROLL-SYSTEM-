@@ -48,10 +48,10 @@
             <input id="emailW" type="email" placeholder="Email">
             <input id="phone" placeholder="Phone">
             <input id="bank_code" placeholder="Bank code" required>
-            <input id="account_number" inputmode="numeric" placeholder="Account number" required>
+            <input id="account_number" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10-digit account number" required>
             <input id="account_name" placeholder="Account name" required>
             <input id="salary" type="number" min="1" placeholder="Monthly salary" required>
-            <button>Add Worker</button>
+            <button id="workerSubmit">Add Worker</button><button id="cancelEdit" type="button" class="secondary hidden">Cancel Edit</button>
           </form>
           <div class="table-wrap"><table><thead><tr><th>Name</th><th>Account</th><th>Salary</th><th>Status</th><th>Action</th></tr></thead><tbody id="workersTable"></tbody></table></div>
         </div>
