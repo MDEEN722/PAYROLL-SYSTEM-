@@ -68,17 +68,48 @@ app.get("/api/workers", auth, (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/workers", auth, (req, res) => {
-  const { first_name, last_name, email, phone, bank_code, account_number, account_name, salary } = req.body;
-  if (!first_name || !last_name || !bank_code || !account_number || !account_name || Number(salary) <= 0) {
-    return res.status(400).json({ error: "Please provide all required worker details." });
+function cleanWorker(body) {
+  const first_name = String(body.first_name || "").trim();
+  const last_name = String(body.last_name || "").trim();
+  const email = String(body.email || "").trim().toLowerCase();
+  const phone = String(body.phone || "").trim();
+  const bank_code = String(body.bank_code || "").trim();
+  const account_number = String(body.account_number || "").replace(/\s+/g, "");
+  const account_name = String(body.account_name || "").trim();
+  const salary = Number(body.salary);
+  if (!first_name || !last_name || !bank_code || !account_number || !account_name || !Number.isFinite(salary) || salary <= 0) {
+    return { error: "Please provide all required worker details." };
   }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Please enter a valid email address." };
+  if (!/^\d{10}$/.test(account_number)) return { error: "Account number must contain exactly 10 digits." };
+  if (phone && !/^\+?[0-9]{10,15}$/.test(phone.replace(/[\s-]/g, ""))) return { error: "Please enter a valid phone number." };
+  return { first_name, last_name, email: email || null, phone: phone || null, bank_code, account_number, account_name, salary };
+}
+
+app.post("/api/workers", auth, (req, res) => {
+  const worker = cleanWorker(req.body);
+  if (worker.error) return res.status(400).json({ error: worker.error });
+  const duplicate = db.prepare("SELECT id FROM workers WHERE account_number=?").get(worker.account_number);
+  if (duplicate) return res.status(409).json({ error: "A worker with this account number already exists." });
   const result = db.prepare(`
     INSERT INTO workers (first_name,last_name,email,phone,bank_code,account_number,account_name,salary)
     VALUES (?,?,?,?,?,?,?,?)
-  `).run(first_name,last_name,email || null,phone || null,bank_code,account_number,account_name,Number(salary));
+  `).run(worker.first_name,worker.last_name,worker.email,worker.phone,worker.bank_code,worker.account_number,worker.account_name,worker.salary);
   audit(req.session.user.id, "CREATE_WORKER", `Worker ID ${result.lastInsertRowid}`);
   res.status(201).json({ id: result.lastInsertRowid });
+});
+
+app.put("/api/workers/:id", auth, (req, res) => {
+  const existing = db.prepare("SELECT id FROM workers WHERE id=?").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Worker not found." });
+  const worker = cleanWorker(req.body);
+  if (worker.error) return res.status(400).json({ error: worker.error });
+  const duplicate = db.prepare("SELECT id FROM workers WHERE account_number=? AND id!=?").get(worker.account_number, req.params.id);
+  if (duplicate) return res.status(409).json({ error: "Another worker already uses this account number." });
+  db.prepare(`UPDATE workers SET first_name=?,last_name=?,email=?,phone=?,bank_code=?,account_number=?,account_name=?,salary=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`)
+    .run(worker.first_name,worker.last_name,worker.email,worker.phone,worker.bank_code,worker.account_number,worker.account_name,worker.salary,req.params.id);
+  audit(req.session.user.id, "UPDATE_WORKER", `Worker ID ${req.params.id}`);
+  res.json({ ok: true });
 });
 
 app.patch("/api/workers/:id/deactivate", auth, (req, res) => {
@@ -88,7 +119,10 @@ app.patch("/api/workers/:id/deactivate", auth, (req, res) => {
 });
 
 app.post("/api/batches", auth, (req, res) => {
-  const { batch_name, payment_date } = req.body;
+  const batch_name = String(req.body.batch_name || "").trim();
+  const payment_date = String(req.body.payment_date || "").trim();
+  if (!batch_name) return res.status(400).json({ error: "Batch name is required." });
+  if (payment_date && !/^\d{4}-\d{2}-\d{2}$/.test(payment_date)) return res.status(400).json({ error: "Payment date must be YYYY-MM-DD." });
   const workers = db.prepare("SELECT id, salary FROM workers WHERE status='active'").all();
   if (!workers.length) return res.status(400).json({ error: "No active workers available." });
   if (workers.length > MAX_BATCH_WORKERS) {
