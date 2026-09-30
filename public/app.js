@@ -66,6 +66,10 @@ async function reviewBatch(id){
   const rows=await api(`/api/batches/${selectedBatchId}/payments`);
   $("reviewTitle").textContent=batch ? batch.batch_name : "Batch Review";
   $("reviewMeta").textContent=batch ? `${batch.total_workers} workers • ${money(batch.total_amount)} • ${batch.status}` : "";
+  $("submitApproval").classList.toggle("hidden",!batch || batch.status!=="draft");
+  $("approveBatch").classList.toggle("hidden",!batch || batch.status!=="pending_approval" || currentUser?.role!=="admin");
+  $("rejectBatch").classList.toggle("hidden",!batch || batch.status!=="pending_approval" || currentUser?.role!=="admin");
+  $("payAll").classList.toggle("hidden",currentUser?.role!=="admin" || !batch || !["approved","failed","partially_failed"].includes(batch.status));
   $("paymentsTable").innerHTML=rows.map(p=>`<tr>
     <td>${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}</td>
     <td>${escapeHtml(p.account_name)}</td>
@@ -141,7 +145,7 @@ $("payAll").onclick=async()=>{
   const rows=await api("/api/batches");
   const batch=rows.find(b=>b.id===selectedBatchId);
   if(!batch){alert("Selected batch was not found.");return;}
-  if(!["draft","failed","partially_failed"].includes(batch.status)){alert("This batch cannot be processed again.");return;}
+  if(!["approved","failed","partially_failed"].includes(batch.status)){alert("This batch must be approved before payment.");return;}
   if(!confirm(`Process "${batch.batch_name}" for ${batch.total_workers} workers totaling ${money(batch.total_amount)}? This is sandbox mode.`))return;
   try{
     const r=await api("/api/payment-batches/"+batch.id+"/pay",{method:"POST"});
@@ -151,7 +155,18 @@ $("payAll").onclick=async()=>{
   }catch(e){alert(e.message);}
 };
 
-$("closeReview").onclick=()=>{$("batchReview").classList.add("hidden");selectedBatchId=null;batches();};
+async function batchAction(action){
+  if(!selectedBatchId)return;
+  try{
+    await api(`/api/batches/${selectedBatchId}/${action}`,{method:"POST"});
+    await Promise.all([dashboard(),batches()]);
+    await reviewBatch(selectedBatchId);
+  }catch(e){alert(e.message);}
+}
+$("submitApproval").onclick=()=>{if(confirm("Submit this payroll batch for administrator approval?"))batchAction("submit");};
+$("approveBatch").onclick=()=>{if(confirm("Approve this payroll batch for payment?"))batchAction("approve");};
+$("rejectBatch").onclick=()=>{if(confirm("Reject this batch and return it to draft?"))batchAction("reject");};
+$("closeReview").onclick=()=>{$("batchReview").classList.add("hidden");selectedBatchId=null;$("payAll").classList.add("hidden");batches();};
 
 async function loadUsers(){
   const rows=await api("/api/users");
