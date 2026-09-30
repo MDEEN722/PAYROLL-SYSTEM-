@@ -157,6 +157,33 @@ app.post("/api/batches", auth, requireRole("admin","payroll_officer"), (req, res
   res.status(201).json({ id });
 });
 
+app.post("/api/batches/:id/submit", auth, requireRole("admin","payroll_officer"), (req, res) => {
+  const batch = db.prepare("SELECT * FROM payment_batches WHERE id=?").get(req.params.id);
+  if (!batch) return res.status(404).json({ error: "Batch not found." });
+  if (batch.status !== "draft") return res.status(400).json({ error: "Only draft batches can be submitted for approval." });
+  db.prepare("UPDATE payment_batches SET status='pending_approval' WHERE id=?").run(batch.id);
+  audit(req.session.user.id, "SUBMIT_BATCH", `Batch ID ${batch.id} submitted for approval`);
+  res.json({ ok: true, status: "pending_approval" });
+});
+
+app.post("/api/batches/:id/approve", auth, requireRole("admin"), (req, res) => {
+  const batch = db.prepare("SELECT * FROM payment_batches WHERE id=?").get(req.params.id);
+  if (!batch) return res.status(404).json({ error: "Batch not found." });
+  if (batch.status !== "pending_approval") return res.status(400).json({ error: "Only pending batches can be approved." });
+  db.prepare("UPDATE payment_batches SET status='approved' WHERE id=?").run(batch.id);
+  audit(req.session.user.id, "APPROVE_BATCH", `Batch ID ${batch.id} approved`);
+  res.json({ ok: true, status: "approved" });
+});
+
+app.post("/api/batches/:id/reject", auth, requireRole("admin"), (req, res) => {
+  const batch = db.prepare("SELECT * FROM payment_batches WHERE id=?").get(req.params.id);
+  if (!batch) return res.status(404).json({ error: "Batch not found." });
+  if (batch.status !== "pending_approval") return res.status(400).json({ error: "Only pending batches can be rejected." });
+  db.prepare("UPDATE payment_batches SET status='draft' WHERE id=?").run(batch.id);
+  audit(req.session.user.id, "REJECT_BATCH", `Batch ID ${batch.id} returned to draft`);
+  res.json({ ok: true, status: "draft" });
+});
+
 app.get("/api/batches", auth, (req, res) => {
   res.json(db.prepare("SELECT * FROM payment_batches ORDER BY id DESC").all());
 });
@@ -172,11 +199,11 @@ app.get("/api/batches/:id/payments", auth, (req, res) => {
 app.post("/api/payment-batches/:id/pay", auth, requireRole("admin"), async (req, res) => {
   const batch = db.prepare("SELECT * FROM payment_batches WHERE id=?").get(req.params.id);
   if (!batch) return res.status(404).json({ error: "Batch not found" });
-  if (!["draft","failed","partially_failed"].includes(batch.status)) {
-    return res.status(400).json({ error: "This batch cannot be paid again." });
+  if (!["approved","failed","partially_failed"].includes(batch.status)) {
+    return res.status(400).json({ error: "This batch must be approved before payment." });
   }
 
-  const locked = db.prepare(`UPDATE payment_batches SET status='processing' WHERE id=? AND status IN ('draft','failed','partially_failed')`).run(batch.id);
+  const locked = db.prepare(`UPDATE payment_batches SET status='processing' WHERE id=? AND status IN ('approved','failed','partially_failed')`).run(batch.id);
   if (!locked.changes) return res.status(409).json({ error: "This batch is already being processed." });
   const payments = db.prepare("SELECT * FROM payments WHERE batch_id=? AND status!='success'").all(batch.id);
 
