@@ -58,6 +58,12 @@
 
         <div class="card">
           <div class="section-head"><h2>Payment Batches</h2><button id="createBatch" class="secondary">Create Batch</button></div>
+          <div id="batchBuilder" class="batch-builder hidden">
+            <div class="builder-head"><strong>Select workers</strong><span id="selectionSummary" class="muted">0 selected</span></div>
+            <div class="builder-actions"><button id="selectAllWorkers" type="button" class="secondary small-btn">Select All</button><button id="clearWorkers" type="button" class="secondary small-btn">Clear</button></div>
+            <div id="batchWorkerList" class="worker-picker"></div>
+            <div class="builder-footer"><button id="cancelBatch" type="button" class="secondary">Cancel</button><button id="confirmBatch" type="button">Create Selected Batch</button></div>
+          </div>
           <div class="table-wrap"><table><thead><tr><th>Batch</th><th>Workers</th><th>Amount</th><th>Status</th><th>Review</th></tr></thead><tbody id="batchesTable"></tbody></table></div>
           <p class="notice">Sandbox mode: payments use a mock provider and do not transfer real money.</p>
         </div>
