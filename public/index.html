@@ -24,7 +24,7 @@
   <div id="app" class="hidden">
     <header class="topbar">
       <div><strong>PAYROLL<span>PRO</span></strong><small> Payroll Management</small></div>
-      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
+      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="usersButton" class="secondary">Users</button><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
     </header>
     <main class="container">
       <section class="hero">
@@ -69,6 +69,18 @@
           <button id="closeReview" class="secondary">Close</button>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Worker</th><th>Account Name</th><th>Amount</th><th>Status</th><th>Reference / Error</th></tr></thead><tbody id="paymentsTable"></tbody></table></div>
+      </section>
+
+      <section id="usersPanel" class="card review-card hidden">
+        <div class="section-head"><div><h2>User Management</h2><p class="muted">Create administrators and payroll officers.</p></div><button id="closeUsers" class="secondary">Close</button></div>
+        <form id="userForm" class="form-grid">
+          <input id="userName" placeholder="Full name" required>
+          <input id="userEmail" type="email" placeholder="Email" required>
+          <input id="userPassword" type="password" minlength="10" placeholder="Temporary password (10+ characters)" required>
+          <select id="userRole"><option value="payroll_officer">Payroll Officer</option><option value="admin">Administrator</option></select>
+          <button>Create User</button>
+        </form>
+        <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Action</th></tr></thead><tbody id="usersTable"></tbody></table></div>
       </section>
 
       <section id="auditPanel" class="card review-card hidden">
