@@ -24,7 +24,7 @@
   <div id="app" class="hidden">
     <header class="topbar">
       <div><strong>PAYROLL<span>PRO</span></strong><small> Payroll Management</small></div>
-      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="reportsButton" class="secondary">Reports</button><button id="usersButton" class="secondary">Users</button><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
+      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="reportsButton" class="secondary">Reports</button><button id="passwordButton" class="secondary">Password</button><button id="usersButton" class="secondary">Users</button><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
     </header>
     <main class="container">
       <section class="hero">
@@ -91,7 +91,7 @@
           <select id="userRole"><option value="payroll_officer">Payroll Officer</option><option value="admin">Administrator</option></select>
           <button>Create User</button>
         </form>
-        <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Created</th><th>Action</th></tr></thead><tbody id="usersTable"></tbody></table></div>
+        <div class="table-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Action</th></tr></thead><tbody id="usersTable"></tbody></table></div>
       </section>
 
       <section id="auditPanel" class="card review-card hidden">
