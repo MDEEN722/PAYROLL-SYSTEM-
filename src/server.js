@@ -223,9 +223,17 @@ app.post("/api/payment-batches/:id/pay", auth, requireRole("admin"), async (req,
     }
   }
 
-  const failed = db.prepare("SELECT COUNT(*) count FROM payments WHERE batch_id=? AND status='failed'").get(batch.id).count;
-  const remaining = db.prepare("SELECT COUNT(*) count FROM payments WHERE batch_id=? AND status!='success'").get(batch.id).count;
-  const status = failed ? (remaining ? "partially_failed" : "failed") : "completed";
+  const counts = db.prepare(`
+    SELECT COUNT(*) total,
+           SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) success,
+           SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) failed,
+           SUM(CASE WHEN status IN ('pending','processing') THEN 1 ELSE 0 END) pending
+    FROM payments WHERE batch_id=?
+  `).get(batch.id);
+  let status = "processing";
+  if (counts.total > 0 && counts.success === counts.total) status = "completed";
+  else if (counts.total > 0 && counts.failed === counts.total) status = "failed";
+  else if (counts.failed > 0) status = "partially_failed";
   db.prepare("UPDATE payment_batches SET status=?, completed_at=CURRENT_TIMESTAMP WHERE id=?").run(status, batch.id);
   audit(req.session.user.id, "PAY_BATCH", `Batch ID ${batch.id}`);
   res.json({ ok: true, status });
@@ -245,6 +253,19 @@ app.post("/api/webhooks/payment", (req, res) => {
   db.prepare(`UPDATE payments SET status=?, failure_reason=?, paid_at=CASE WHEN ?='success' THEN COALESCE(paid_at,CURRENT_TIMESTAMP) ELSE paid_at END WHERE id=?`)
     .run(status || "success", failure_reason || null, status || "success", payment.id);
   res.json({ received: true });
+});
+
+app.get("/api/reports/payroll", auth, (req, res) => {
+  const rows = db.prepare(`
+    SELECT b.id,b.batch_name,b.payment_date,b.status,b.total_workers,b.total_amount,b.created_at,b.completed_at,
+           SUM(CASE WHEN p.status='success' THEN 1 ELSE 0 END) success_count,
+           SUM(CASE WHEN p.status='failed' THEN 1 ELSE 0 END) failed_count,
+           SUM(CASE WHEN p.status IN ('pending','processing') THEN 1 ELSE 0 END) pending_count,
+           COALESCE(SUM(CASE WHEN p.status='success' THEN p.amount ELSE 0 END),0) paid_amount
+    FROM payment_batches b LEFT JOIN payments p ON p.batch_id=b.id
+    GROUP BY b.id ORDER BY b.id DESC LIMIT 100
+  `).all();
+  res.json(rows);
 });
 
 app.get("/api/users", auth, requireRole("admin"), (req, res) => {
