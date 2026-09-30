@@ -39,6 +39,11 @@ app.use(express.static(path.join(__dirname, "..", "public")));
 
 function auth(req, res, next) {
   if (!req.session.user) return res.status(401).json({ error: "Authentication required" });
+  const user = db.prepare("SELECT id,name,email,role,status FROM users WHERE id=?").get(req.session.user.id);
+  if (!user || user.status !== "active") {
+    return req.session.destroy(() => res.status(401).json({ error: "Your account is inactive or unavailable." }));
+  }
+  req.session.user = { id:user.id, name:user.name, email:user.email, role:user.role };
   next();
 }
 
@@ -66,7 +71,7 @@ app.post("/api/login", loginLimiter, (req, res) => {
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "");
   const user = db.prepare("SELECT * FROM users WHERE lower(email) = ?").get(email);
-  if (!user || !bcrypt.compareSync(password || "", user.password_hash)) {
+  if (!user || user.status !== "active" || !bcrypt.compareSync(password || "", user.password_hash)) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
   req.session.regenerate(err => {
@@ -83,7 +88,18 @@ app.post("/api/logout", auth, (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
-app.get("/api/me", (req, res) => res.json({ user: req.session.user || null }));
+app.get("/api/me", auth, (req, res) => res.json({ user: req.session.user }));
+
+app.post("/api/change-password", auth, (req,res)=>{
+  const currentPassword=String(req.body.current_password||"");
+  const newPassword=String(req.body.new_password||"");
+  if(newPassword.length<10) return res.status(400).json({error:"New password must be at least 10 characters."});
+  const user=db.prepare("SELECT password_hash FROM users WHERE id=?").get(req.session.user.id);
+  if(!bcrypt.compareSync(currentPassword,user.password_hash)) return res.status(400).json({error:"Current password is incorrect."});
+  db.prepare("UPDATE users SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(bcrypt.hashSync(newPassword,12),req.session.user.id);
+  audit(req.session.user.id,"CHANGE_PASSWORD","User changed their password");
+  res.json({ok:true});
+});
 
 app.get("/api/dashboard", auth, (req, res) => {
   const workers = db.prepare("SELECT COUNT(*) count FROM workers WHERE status='active'").get().count;
@@ -296,7 +312,7 @@ app.get("/api/reports/payroll", auth, (req, res) => {
 });
 
 app.get("/api/users", auth, requireRole("admin"), (req, res) => {
-  res.json(db.prepare("SELECT id,name,email,role,created_at FROM users ORDER BY id DESC").all());
+  res.json(db.prepare("SELECT id,name,email,role,status,created_at FROM users ORDER BY id DESC").all());
 });
 
 app.post("/api/users", auth, requireRole("admin"), (req, res) => {
@@ -313,6 +329,27 @@ app.post("/api/users", auth, requireRole("admin"), (req, res) => {
   const result = db.prepare("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)").run(name,email,hash,role);
   audit(req.session.user.id, "CREATE_USER", `Created ${role} user ID ${result.lastInsertRowid}`);
   res.status(201).json({ id: result.lastInsertRowid });
+});
+
+app.patch("/api/users/:id/status", auth, requireRole("admin"), (req,res)=>{
+  const status=String(req.body.status||"");
+  if(!["active","inactive"].includes(status)) return res.status(400).json({error:"Invalid user status."});
+  const target=db.prepare("SELECT id FROM users WHERE id=?").get(req.params.id);
+  if(!target) return res.status(404).json({error:"User not found."});
+  if(Number(req.params.id)===req.session.user.id && status!=="active") return res.status(400).json({error:"You cannot deactivate your own account."});
+  db.prepare("UPDATE users SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(status,req.params.id);
+  audit(req.session.user.id,status==="active"?"ACTIVATE_USER":"DEACTIVATE_USER",`User ID ${req.params.id}`);
+  res.json({ok:true});
+});
+
+app.post("/api/users/:id/reset-password", auth, requireRole("admin"), (req,res)=>{
+  const password=String(req.body.password||"");
+  if(password.length<10) return res.status(400).json({error:"Password must be at least 10 characters."});
+  const target=db.prepare("SELECT id FROM users WHERE id=?").get(req.params.id);
+  if(!target) return res.status(404).json({error:"User not found."});
+  db.prepare("UPDATE users SET password_hash=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").run(bcrypt.hashSync(password,12),req.params.id);
+  audit(req.session.user.id,"RESET_USER_PASSWORD",`Password reset for user ID ${req.params.id}`);
+  res.json({ok:true});
 });
 
 app.patch("/api/users/:id/role", auth, requireRole("admin"), (req, res) => {
