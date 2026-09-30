@@ -38,7 +38,7 @@ async function workers(){
     <td>${escapeHtml(w.account_name)}<br><small>${escapeHtml(w.account_number)}</small></td>
     <td>${money(w.salary)}</td>
     <td><span class="status ${escapeHtml(w.status)}">${escapeHtml(w.status)}</span></td>
-    <td>`<button class="secondary small-btn" data-edit="${w.id}">Edit</button> ${w.status==="active" ? `<button class="danger small-btn" data-deactivate="${w.id}">Deactivate</button>` : ""}`</td>
+    <td><button class="secondary small-btn" data-edit="${w.id}">Edit</button> ${w.status==="active" ? `<button class="danger small-btn" data-deactivate="${w.id}">Deactivate</button>` : ""}</td>
   </tr>`).join("") : '<tr><td colspan="5" class="empty">No workers yet.</td></tr>';
 }
 
