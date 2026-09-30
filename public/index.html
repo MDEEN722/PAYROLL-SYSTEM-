@@ -28,8 +28,8 @@
     </header>
     <main class="container">
       <section class="hero">
-        <div><h1>Payroll Dashboard</h1><p>Manage workers and process payroll securely.</p></div>
-        <button id="payAll" class="pay">Pay All Workers</button>
+        <div><h1>Payroll Dashboard</h1><p>Manage workers, review batches, and process payroll securely.</p></div>
+        <button id="payAll" class="pay">Pay Selected Batch</button>
       </section>
 
       <section class="stats">
@@ -48,19 +48,27 @@
             <input id="emailW" type="email" placeholder="Email">
             <input id="phone" placeholder="Phone">
             <input id="bank_code" placeholder="Bank code" required>
-            <input id="account_number" placeholder="Account number" required>
+            <input id="account_number" inputmode="numeric" placeholder="Account number" required>
             <input id="account_name" placeholder="Account name" required>
             <input id="salary" type="number" min="1" placeholder="Monthly salary" required>
             <button>Add Worker</button>
           </form>
-          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Account</th><th>Salary</th><th>Status</th></tr></thead><tbody id="workersTable"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Name</th><th>Account</th><th>Salary</th><th>Status</th><th>Action</th></tr></thead><tbody id="workersTable"></tbody></table></div>
         </div>
 
         <div class="card">
           <div class="section-head"><h2>Payment Batches</h2><button id="createBatch" class="secondary">Create Batch</button></div>
-          <div class="table-wrap"><table><thead><tr><th>Batch</th><th>Workers</th><th>Amount</th><th>Status</th></tr></thead><tbody id="batchesTable"></tbody></table></div>
-          <p class="notice">Sandbox mode: Pay All Workers uses a mock provider and does not transfer real money.</p>
+          <div class="table-wrap"><table><thead><tr><th>Batch</th><th>Workers</th><th>Amount</th><th>Status</th><th>Review</th></tr></thead><tbody id="batchesTable"></tbody></table></div>
+          <p class="notice">Sandbox mode: payments use a mock provider and do not transfer real money.</p>
         </div>
+      </section>
+
+      <section id="batchReview" class="card review-card hidden">
+        <div class="section-head">
+          <div><h2 id="reviewTitle">Batch Review</h2><p id="reviewMeta" class="muted"></p></div>
+          <button id="closeReview" class="secondary">Close</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr><th>Worker</th><th>Account Name</th><th>Amount</th><th>Status</th><th>Reference / Error</th></tr></thead><tbody id="paymentsTable"></tbody></table></div>
       </section>
     </main>
   </div>
