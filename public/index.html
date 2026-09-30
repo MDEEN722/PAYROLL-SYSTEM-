@@ -24,7 +24,7 @@
   <div id="app" class="hidden">
     <header class="topbar">
       <div><strong>PAYROLL<span>PRO</span></strong><small> Payroll Management</small></div>
-      <button id="logout" class="secondary">Logout</button>
+      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
     </header>
     <main class="container">
       <section class="hero">
@@ -69,6 +69,11 @@
           <button id="closeReview" class="secondary">Close</button>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Worker</th><th>Account Name</th><th>Amount</th><th>Status</th><th>Reference / Error</th></tr></thead><tbody id="paymentsTable"></tbody></table></div>
+      </section>
+
+      <section id="auditPanel" class="card review-card hidden">
+        <div class="section-head"><div><h2>Audit Log</h2><p class="muted">Recent security and payroll activity.</p></div><button id="closeAudit" class="secondary">Close</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody id="auditTable"></tbody></table></div>
       </section>
     </main>
   </div>
