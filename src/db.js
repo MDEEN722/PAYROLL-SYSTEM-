@@ -77,4 +77,7 @@ if (!exists) {
     .run("System Administrator", email, hash, "admin");
 }
 
+const userColumns = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+if (!userColumns.includes("status")) db.exec("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'");
+if (!userColumns.includes("updated_at")) db.exec("ALTER TABLE users ADD COLUMN updated_at TEXT");
 module.exports = db;
