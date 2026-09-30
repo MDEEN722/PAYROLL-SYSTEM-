@@ -66,7 +66,7 @@
       <section id="batchReview" class="card review-card hidden">
         <div class="section-head">
           <div><h2 id="reviewTitle">Batch Review</h2><p id="reviewMeta" class="muted"></p></div>
-          <button id="closeReview" class="secondary">Close</button>
+          <div class="review-actions"><button id="submitApproval" class="secondary hidden">Submit for Approval</button><button id="approveBatch" class="pay hidden">Approve</button><button id="rejectBatch" class="danger hidden">Reject</button><button id="closeReview" class="secondary">Close</button></div>
         </div>
         <div class="table-wrap"><table><thead><tr><th>Worker</th><th>Account Name</th><th>Amount</th><th>Status</th><th>Reference / Error</th></tr></thead><tbody id="paymentsTable"></tbody></table></div>
       </section>
