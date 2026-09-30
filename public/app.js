@@ -4,6 +4,7 @@ const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"
 let selectedBatchId = null;
 let editingWorkerId = null;
 let workerCache = [];
+let currentUser = null;
 
 async function api(url, options={}) {
   const res = await fetch(url, { headers: {"Content-Type":"application/json"}, ...options });
@@ -15,6 +16,10 @@ async function api(url, options={}) {
 async function load() {
   const me = await api("/api/me");
   if (!me.user) return showLogin();
+  currentUser=me.user;
+  $("currentUser").textContent=`${me.user.name} • ${me.user.role}`;
+  $("auditButton").classList.toggle("hidden",me.user.role!=="admin");
+  $("payAll").classList.toggle("hidden",me.user.role!=="admin");
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
   await Promise.all([dashboard(), workers(), batches()]);
@@ -38,7 +43,7 @@ async function workers(){
     <td>${escapeHtml(w.account_name)}<br><small>${escapeHtml(w.account_number)}</small></td>
     <td>${money(w.salary)}</td>
     <td><span class="status ${escapeHtml(w.status)}">${escapeHtml(w.status)}</span></td>
-    <td><button class="secondary small-btn" data-edit="${w.id}">Edit</button> ${w.status==="active" ? `<button class="danger small-btn" data-deactivate="${w.id}">Deactivate</button>` : ""}</td>
+    <td><button class="secondary small-btn" data-edit="${w.id}">Edit</button> ${w.status==="active" && currentUser?.role==="admin" ? `<button class="danger small-btn" data-deactivate="${w.id}">Deactivate</button>` : ""}</td>
   </tr>`).join("") : '<tr><td colspan="5" class="empty">No workers yet.</td></tr>';
 }
 
@@ -146,5 +151,15 @@ $("payAll").onclick=async()=>{
 };
 
 $("closeReview").onclick=()=>{$("batchReview").classList.add("hidden");selectedBatchId=null;batches();};
+
+$("auditButton").onclick=async()=>{
+  try{
+    const rows=await api("/api/audit-logs");
+    $("auditTable").innerHTML=rows.length ? rows.map(x=>`<tr><td>${escapeHtml(x.created_at)}</td><td>${escapeHtml(x.name||"System")}</td><td>${escapeHtml(x.action)}</td><td>${escapeHtml(x.details||"—")}</td></tr>`).join("") : '<tr><td colspan="4" class="empty">No audit events yet.</td></tr>';
+    $("auditPanel").classList.remove("hidden");
+    $("auditPanel").scrollIntoView({behavior:"smooth",block:"start"});
+  }catch(e){alert(e.message);}
+};
+$("closeAudit").onclick=()=>$("auditPanel").classList.add("hidden");
 $("refreshWorkers").onclick=workers;
 load().catch(()=>showLogin());
