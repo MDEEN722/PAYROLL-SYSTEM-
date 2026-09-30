@@ -2,6 +2,8 @@ const $ = id => document.getElementById(id);
 const money = n => "₦" + Number(n || 0).toLocaleString("en-NG",{minimumFractionDigits:2});
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selectedBatchId = null;
+let editingWorkerId = null;
+let workerCache = [];
 
 async function api(url, options={}) {
   const res = await fetch(url, { headers: {"Content-Type":"application/json"}, ...options });
@@ -30,12 +32,13 @@ async function dashboard(){
 
 async function workers(){
   const rows=await api("/api/workers");
+  workerCache=rows;
   $("workersTable").innerHTML=rows.length ? rows.map(w=>`<tr>
     <td>${escapeHtml(w.first_name)} ${escapeHtml(w.last_name)}</td>
     <td>${escapeHtml(w.account_name)}<br><small>${escapeHtml(w.account_number)}</small></td>
     <td>${money(w.salary)}</td>
     <td><span class="status ${escapeHtml(w.status)}">${escapeHtml(w.status)}</span></td>
-    <td>${w.status==="active" ? `<button class="danger small-btn" data-deactivate="${w.id}">Deactivate</button>` : "—"}</td>
+    <td>`<button class="secondary small-btn" data-edit="${w.id}">Edit</button> ${w.status==="active" ? `<button class="danger small-btn" data-deactivate="${w.id}">Deactivate</button>` : ""}`</td>
   </tr>`).join("") : '<tr><td colspan="5" class="empty">No workers yet.</td></tr>';
 }
 
@@ -80,10 +83,31 @@ $("logout").onclick=async()=>{await api("/api/logout",{method:"POST"});showLogin
 $("workerForm").addEventListener("submit", async e=>{
   e.preventDefault();
   const body={first_name:$("first_name").value,last_name:$("last_name").value,email:$("emailW").value,phone:$("phone").value,bank_code:$("bank_code").value,account_number:$("account_number").value,account_name:$("account_name").value,salary:Number($("salary").value)};
-  try{await api("/api/workers",{method:"POST",body:JSON.stringify(body)});e.target.reset();await Promise.all([dashboard(),workers()]);alert("Worker added successfully.");}catch(err){alert(err.message);}
+  try{
+    if(editingWorkerId) await api("/api/workers/"+editingWorkerId,{method:"PUT",body:JSON.stringify(body)});
+    else await api("/api/workers",{method:"POST",body:JSON.stringify(body)});
+    const message=editingWorkerId ? "Worker updated successfully." : "Worker added successfully.";
+    resetWorkerForm(); await Promise.all([dashboard(),workers()]); alert(message);
+  }catch(err){alert(err.message);}
 });
 
+function resetWorkerForm(){
+  editingWorkerId=null; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
+}
+$("cancelEdit").onclick=resetWorkerForm;
+
 $("workersTable").addEventListener("click", async e=>{
+  const editId=e.target.dataset.edit;
+  if(editId){
+    const w=workerCache.find(x=>x.id===Number(editId));
+    if(!w)return;
+    editingWorkerId=w.id;
+    $("first_name").value=w.first_name; $("last_name").value=w.last_name; $("emailW").value=w.email||""; $("phone").value=w.phone||"";
+    $("bank_code").value=w.bank_code; $("account_number").value=""; $("account_name").value=w.account_name; $("salary").value=w.salary;
+    $("account_number").placeholder="Re-enter 10-digit account number";
+    $("workerSubmit").textContent="Save Changes"; $("cancelEdit").classList.remove("hidden"); $("first_name").focus();
+    return;
+  }
   const id=e.target.dataset.deactivate;
   if(!id)return;
   if(!confirm("Deactivate this worker? They will be excluded from future payroll batches."))return;
