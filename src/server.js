@@ -32,8 +32,9 @@ function audit(userId, action, details = "") {
 }
 
 app.post("/api/login", (req, res) => {
-  const { email, password } = req.body;
-  const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "");
+  const user = db.prepare("SELECT * FROM users WHERE lower(email) = ?").get(email);
   if (!user || !bcrypt.compareSync(password || "", user.password_hash)) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
@@ -113,6 +114,9 @@ app.put("/api/workers/:id", auth, (req, res) => {
 });
 
 app.patch("/api/workers/:id/deactivate", auth, (req, res) => {
+  const existing = db.prepare("SELECT id,status FROM workers WHERE id=?").get(req.params.id);
+  if (!existing) return res.status(404).json({ error: "Worker not found." });
+  if (existing.status === "inactive") return res.json({ ok: true });
   db.prepare("UPDATE workers SET status='inactive', updated_at=CURRENT_TIMESTAMP WHERE id=?").run(req.params.id);
   audit(req.session.user.id, "DEACTIVATE_WORKER", `Worker ID ${req.params.id}`);
   res.json({ ok: true });
@@ -161,11 +165,12 @@ app.get("/api/batches/:id/payments", auth, (req, res) => {
 app.post("/api/payment-batches/:id/pay", auth, async (req, res) => {
   const batch = db.prepare("SELECT * FROM payment_batches WHERE id=?").get(req.params.id);
   if (!batch) return res.status(404).json({ error: "Batch not found" });
-  if (["completed","processing"].includes(batch.status)) {
+  if (!["draft","failed","partially_failed"].includes(batch.status)) {
     return res.status(400).json({ error: "This batch cannot be paid again." });
   }
 
-  db.prepare("UPDATE payment_batches SET status='processing' WHERE id=?").run(batch.id);
+  const locked = db.prepare(`UPDATE payment_batches SET status='processing' WHERE id=? AND status IN ('draft','failed','partially_failed')`).run(batch.id);
+  if (!locked.changes) return res.status(409).json({ error: "This batch is already being processed." });
   const payments = db.prepare("SELECT * FROM payments WHERE batch_id=? AND status!='success'").all(batch.id);
 
   for (const payment of payments) {
@@ -192,12 +197,18 @@ app.post("/api/payment-batches/:id/pay", auth, async (req, res) => {
 });
 
 app.post("/api/webhooks/payment", (req, res) => {
+  const webhookSecret = process.env.WEBHOOK_SECRET;
+  if (webhookSecret && req.get("x-webhook-secret") !== webhookSecret) {
+    return res.status(401).json({ error: "Invalid webhook secret" });
+  }
   const { provider_reference, status, failure_reason } = req.body;
+  const allowedStatuses = new Set(["pending","processing","success","failed"]);
+  if (status && !allowedStatuses.has(status)) return res.status(400).json({ error: "Invalid payment status" });
   if (!provider_reference) return res.status(400).json({ error: "provider_reference is required" });
   const payment = db.prepare("SELECT id FROM payments WHERE provider_reference=?").get(provider_reference);
   if (!payment) return res.status(404).json({ error: "Payment reference not found" });
-  db.prepare("UPDATE payments SET status=?, failure_reason=? WHERE id=?")
-    .run(status || "success", failure_reason || null, payment.id);
+  db.prepare(`UPDATE payments SET status=?, failure_reason=?, paid_at=CASE WHEN ?='success' THEN COALESCE(paid_at,CURRENT_TIMESTAMP) ELSE paid_at END WHERE id=?`)
+    .run(status || "success", failure_reason || null, status || "success", payment.id);
   res.json({ received: true });
 });
 
