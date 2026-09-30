@@ -19,6 +19,7 @@ async function load() {
   currentUser=me.user;
   $("currentUser").textContent=`${me.user.name} • ${me.user.role}`;
   $("auditButton").classList.toggle("hidden",me.user.role!=="admin");
+  $("usersButton").classList.toggle("hidden",me.user.role!=="admin");
   $("payAll").classList.toggle("hidden",me.user.role!=="admin");
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
@@ -151,6 +152,26 @@ $("payAll").onclick=async()=>{
 };
 
 $("closeReview").onclick=()=>{$("batchReview").classList.add("hidden");selectedBatchId=null;batches();};
+
+async function loadUsers(){
+  const rows=await api("/api/users");
+  $("usersTable").innerHTML=rows.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td><span class="status">${escapeHtml(u.role)}</span></td><td>${escapeHtml(u.created_at)}</td><td>${u.id===currentUser.id ? "Current user" : `<button class="secondary small-btn" data-role-user="${u.id}" data-role="${u.role==="admin"?"payroll_officer":"admin"}">Make ${u.role==="admin"?"Payroll Officer":"Admin"}</button>`}</td></tr>`).join("");
+}
+$("usersButton").onclick=async()=>{try{await loadUsers();$("usersPanel").classList.remove("hidden");$("usersPanel").scrollIntoView({behavior:"smooth"});}catch(e){alert(e.message);}};
+$("closeUsers").onclick=()=>$("usersPanel").classList.add("hidden");
+$("userForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  try{
+    await api("/api/users",{method:"POST",body:JSON.stringify({name:$("userName").value,email:$("userEmail").value,password:$("userPassword").value,role:$("userRole").value})});
+    e.target.reset(); await loadUsers(); alert("User created successfully.");
+  }catch(err){alert(err.message);}
+});
+$("usersTable").addEventListener("click",async e=>{
+  const id=e.target.dataset.roleUser, role=e.target.dataset.role;
+  if(!id)return;
+  if(!confirm(`Change this user's role to ${role}?`))return;
+  try{await api(`/api/users/${id}/role`,{method:"PATCH",body:JSON.stringify({role})});await loadUsers();}catch(err){alert(err.message);}
+});
 
 $("auditButton").onclick=async()=>{
   try{
