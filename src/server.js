@@ -4,20 +4,36 @@ const express = require("express");
 const session = require("express-session");
 const path = require("path");
 const bcrypt = require("bcryptjs");
+const rateLimit = require("express-rate-limit");
 const db = require("./db");
 const { payWorker } = require("./services/paymentProvider");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const MAX_BATCH_WORKERS = Number(process.env.MAX_BATCH_WORKERS || 100);
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const SESSION_SECRET = process.env.SESSION_SECRET || "development-secret-change-me";
+if (IS_PRODUCTION && SESSION_SECRET === "development-secret-change-me") {
+  throw new Error("SESSION_SECRET must be configured before production startup.");
+}
+if (IS_PRODUCTION) app.set("trust proxy", 1);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.disable("x-powered-by");
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
+app.use((req,res,next)=>{
+  res.setHeader("X-Content-Type-Options","nosniff");
+  res.setHeader("X-Frame-Options","DENY");
+  res.setHeader("Referrer-Policy","no-referrer");
+  res.setHeader("Permissions-Policy","camera=(), microphone=(), geolocation=()");
+  if (IS_PRODUCTION) res.setHeader("Strict-Transport-Security","max-age=31536000; includeSubDomains");
+  next();
+});
 app.use(session({
-  secret: process.env.SESSION_SECRET || "development-secret-change-me",
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { httpOnly: true, sameSite: "lax" }
+  cookie: { httpOnly: true, sameSite: "lax", secure: IS_PRODUCTION, maxAge: 8 * 60 * 60 * 1000 }
 }));
 app.use(express.static(path.join(__dirname, "..", "public")));
 
@@ -33,21 +49,32 @@ function requireRole(...roles) {
   };
 }
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many login attempts. Please try again later." }
+});
+
 function audit(userId, action, details = "") {
   db.prepare("INSERT INTO audit_logs (user_id, action, details) VALUES (?,?,?)")
     .run(userId, action, details);
 }
 
-app.post("/api/login", (req, res) => {
+app.post("/api/login", loginLimiter, (req, res) => {
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "");
   const user = db.prepare("SELECT * FROM users WHERE lower(email) = ?").get(email);
   if (!user || !bcrypt.compareSync(password || "", user.password_hash)) {
     return res.status(401).json({ error: "Invalid email or password" });
   }
-  req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
-  audit(user.id, "LOGIN", "User logged in");
-  res.json({ user: req.session.user });
+  req.session.regenerate(err => {
+    if (err) return res.status(500).json({ error: "Unable to start session." });
+    req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
+    audit(user.id, "LOGIN", "User logged in");
+    res.json({ user: req.session.user });
+  });
 });
 
 app.post("/api/logout", auth, (req, res) => {
