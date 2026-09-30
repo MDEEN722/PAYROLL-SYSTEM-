@@ -26,6 +26,13 @@ function auth(req, res, next) {
   next();
 }
 
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!req.session.user || !roles.includes(req.session.user.role)) return res.status(403).json({ error: "You do not have permission for this action." });
+    next();
+  };
+}
+
 function audit(userId, action, details = "") {
   db.prepare("INSERT INTO audit_logs (user_id, action, details) VALUES (?,?,?)")
     .run(userId, action, details);
@@ -87,7 +94,7 @@ function cleanWorker(body) {
   return { first_name, last_name, email: email || null, phone: phone || null, bank_code, account_number, account_name, salary };
 }
 
-app.post("/api/workers", auth, (req, res) => {
+app.post("/api/workers", auth, requireRole("admin","payroll_officer"), (req, res) => {
   const worker = cleanWorker(req.body);
   if (worker.error) return res.status(400).json({ error: worker.error });
   const duplicate = db.prepare("SELECT id FROM workers WHERE account_number=?").get(worker.account_number);
@@ -100,7 +107,7 @@ app.post("/api/workers", auth, (req, res) => {
   res.status(201).json({ id: result.lastInsertRowid });
 });
 
-app.put("/api/workers/:id", auth, (req, res) => {
+app.put("/api/workers/:id", auth, requireRole("admin","payroll_officer"), (req, res) => {
   const existing = db.prepare("SELECT id FROM workers WHERE id=?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "Worker not found." });
   const worker = cleanWorker(req.body);
@@ -113,7 +120,7 @@ app.put("/api/workers/:id", auth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.patch("/api/workers/:id/deactivate", auth, (req, res) => {
+app.patch("/api/workers/:id/deactivate", auth, requireRole("admin"), (req, res) => {
   const existing = db.prepare("SELECT id,status FROM workers WHERE id=?").get(req.params.id);
   if (!existing) return res.status(404).json({ error: "Worker not found." });
   if (existing.status === "inactive") return res.json({ ok: true });
@@ -122,7 +129,7 @@ app.patch("/api/workers/:id/deactivate", auth, (req, res) => {
   res.json({ ok: true });
 });
 
-app.post("/api/batches", auth, (req, res) => {
+app.post("/api/batches", auth, requireRole("admin","payroll_officer"), (req, res) => {
   const batch_name = String(req.body.batch_name || "").trim();
   const payment_date = String(req.body.payment_date || "").trim();
   if (!batch_name) return res.status(400).json({ error: "Batch name is required." });
@@ -162,7 +169,7 @@ app.get("/api/batches/:id/payments", auth, (req, res) => {
   `).all(req.params.id));
 });
 
-app.post("/api/payment-batches/:id/pay", auth, async (req, res) => {
+app.post("/api/payment-batches/:id/pay", auth, requireRole("admin"), async (req, res) => {
   const batch = db.prepare("SELECT * FROM payment_batches WHERE id=?").get(req.params.id);
   if (!batch) return res.status(404).json({ error: "Batch not found" });
   if (!["draft","failed","partially_failed"].includes(batch.status)) {
@@ -212,7 +219,7 @@ app.post("/api/webhooks/payment", (req, res) => {
   res.json({ received: true });
 });
 
-app.get("/api/audit-logs", auth, (req, res) => {
+app.get("/api/audit-logs", auth, requireRole("admin"), (req, res) => {
   res.json(db.prepare(`
     SELECT a.*, u.name FROM audit_logs a
     LEFT JOIN users u ON u.id=a.user_id
