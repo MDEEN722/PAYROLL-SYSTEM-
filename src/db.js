@@ -1,7 +1,7 @@
 const Database = require("better-sqlite3");
 const bcrypt = require("bcryptjs");
 
-const db = new Database("payroll.db");
+const db = new Database(process.env.DATABASE_PATH || "payroll.db");
 db.pragma("journal_mode = WAL");
 
 db.exec(`
