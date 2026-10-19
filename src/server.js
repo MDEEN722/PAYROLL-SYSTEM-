@@ -13,6 +13,12 @@ const PORT = Number(process.env.PORT || 3000);
 const MAX_BATCH_WORKERS = Number(process.env.MAX_BATCH_WORKERS || 100);
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const SESSION_SECRET = process.env.SESSION_SECRET || "development-secret-change-me";
+if (IS_PRODUCTION && (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD === "ChangeMe123!" || process.env.ADMIN_PASSWORD.length < 12)) {
+  throw new Error("Set ADMIN_EMAIL and a strong ADMIN_PASSWORD (12+ characters) before production startup.");
+}
+if (IS_PRODUCTION && process.env.PAYSTACK_SECRET_KEY && !process.env.PAYSTACK_SECRET_KEY.startsWith("sk_test_")) {
+  throw new Error("Only Paystack test keys are allowed for this sandbox deployment.");
+}
 if (IS_PRODUCTION && SESSION_SECRET === "development-secret-change-me") {
   throw new Error("SESSION_SECRET must be configured before production startup.");
 }
@@ -29,7 +35,9 @@ app.use((req,res,next)=>{
   if (IS_PRODUCTION) res.setHeader("Strict-Transport-Security","max-age=31536000; includeSubDomains");
   next();
 });
+const SQLiteSessionStore = require("./sessionStore");
 app.use(session({
+  store: new SQLiteSessionStore(db),
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
@@ -100,6 +108,8 @@ app.post("/api/change-password", auth, (req,res)=>{
   audit(req.session.user.id,"CHANGE_PASSWORD","User changed their password");
   res.json({ok:true});
 });
+
+app.get("/health", (req,res) => res.status(200).json({status:"ok"}));
 
 app.get("/api/dashboard", auth, (req, res) => {
   const workers = db.prepare("SELECT COUNT(*) count FROM workers WHERE status='active'").get().count;
