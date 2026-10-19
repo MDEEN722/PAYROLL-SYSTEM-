@@ -8,6 +8,7 @@ let currentUser = null;
 let selectedWorkerIds = new Set();
 let accountVerified = false;
 let verificationTimer;
+let verificationRequestId = 0;
 async function loadBanks(){
   try{
     const banks=await api("/api/banks");
@@ -15,21 +16,23 @@ async function loadBanks(){
   }catch(e){$("accountStatus").textContent="Unable to load banks: "+e.message;}
 }
 async function resolveAccount(){
+  const requestId=++verificationRequestId;
   const code=$("bank_code").value, number=$("account_number").value.trim();
   accountVerified=false;$("account_name").value="";
-  if(!code || !/^\\d{10}$/.test(number)){$("accountStatus").textContent="";return;}
+  if(!code || !/^\d{10}$/.test(number)){$("accountStatus").textContent="";return;}
   $("accountStatus").textContent="Checking bank account...";
   try{
     const data=await api("/api/banks/resolve?bank_code="+encodeURIComponent(code)+"&account_number="+encodeURIComponent(number));
-    if($("bank_code").value!==code || $("account_number").value.trim()!==number)return;
+    if(requestId!==verificationRequestId || $("bank_code").value!==code || $("account_number").value.trim()!==number)return;
     $("account_name").value=data.account_name;
     accountVerified=true;
     $("accountStatus").textContent="Account name confirmed by bank verification service.";
-  }catch(e){$("accountStatus").textContent=e.message;}
+  }catch(e){if(requestId===verificationRequestId) $("accountStatus").textContent=e.message;}
 }
 for(const id of ["bank_code","account_number"]){
   $(id).addEventListener("input",()=>{
     clearTimeout(verificationTimer);
+    verificationRequestId++;
     accountVerified=false;$("account_name").value="";
     verificationTimer=setTimeout(resolveAccount,500);
   });
@@ -149,6 +152,7 @@ $("workerForm").addEventListener("submit", async e=>{
 });
 
 function resetWorkerForm(){
+  verificationRequestId++; clearTimeout(verificationTimer);
   editingWorkerId=null; accountVerified=false; $("accountStatus").textContent=""; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
 }
 $("cancelEdit").onclick=resetWorkerForm;
@@ -158,6 +162,7 @@ $("workersTable").addEventListener("click", async e=>{
   if(editId){
     const w=workerCache.find(x=>x.id===Number(editId));
     if(!w)return;
+    verificationRequestId++; clearTimeout(verificationTimer);
     editingWorkerId=w.id; accountVerified=false; $("accountStatus").textContent="Re-enter the account number to verify it.";
     $("first_name").value=w.first_name; $("last_name").value=w.last_name; $("emailW").value=w.email||""; $("phone").value=w.phone||"";
     $("bank_code").value=w.bank_code; $("account_number").value=""; $("account_name").value=w.account_name; $("salary").value=w.salary;
