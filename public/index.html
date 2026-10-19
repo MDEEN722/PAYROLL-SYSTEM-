@@ -26,7 +26,19 @@
       <div><strong>PAYROLL<span>PRO</span></strong><small> Payroll Management</small></div>
       <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="reportsButton" class="secondary">Reports</button><button id="passwordButton" class="secondary">Password</button><button id="usersButton" class="secondary">Users</button><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
     </header>
-    <main class="container">
+    <div class="app-layout">
+      <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+        <div class="sidebar-label">WORKSPACE</div>
+        <button type="button" class="nav-link active" data-nav="dashboardSection">▦ <span>Dashboard</span></button>
+        <button type="button" class="nav-link" data-nav="workersSection">♙ <span>Workers</span></button>
+        <button type="button" class="nav-link" data-nav="batchesSection">▤ <span>Payment Batches</span></button>
+        <div class="sidebar-label">MANAGEMENT</div>
+        <button type="button" class="nav-link" data-action="reports">▥ <span>Reports</span></button>
+        <button type="button" class="nav-link" data-action="users" id="navUsers">♧ <span>Users</span></button>
+        <button type="button" class="nav-link" data-action="audit" id="navAudit">◷ <span>Audit Log</span></button>
+        <div class="sidebar-bottom"><strong>Sandbox mode</strong><small>Demo payments only. No real funds move.</small></div>
+      </aside>
+      <main class="container" id="dashboardSection">
       <section class="hero">
         <div><h1>Payroll Dashboard</h1><p>Manage workers, review batches, and process payroll securely.</p></div>
         <button id="payAll" class="pay">Pay Selected Batch</button>
@@ -39,8 +51,18 @@
         <div class="stat"><span>Pending Payments</span><b id="pendingCount">0</b></div>
       </section>
 
+      <section class="insights-grid" aria-label="Payroll overview">
+        <div class="card insights-card">
+          <div class="section-head"><h2>Payroll overview</h2><span class="muted">Current totals</span></div>
+          <div class="insight-bars" id="payrollChart" aria-label="Paid and pending payroll amounts"></div>
+        </div>
+        <div class="card insights-card">
+          <div class="section-head"><h2>Recent batches</h2><span class="muted">Latest activity</span></div>
+          <div id="recentBatches" class="recent-batches"><p class="muted">Loading batches...</p></div>
+        </div>
+      </section>
       <section class="grid">
-        <div class="card">
+        <div class="card" id="workersSection">
           <div class="section-head"><h2>Workers</h2><button id="refreshWorkers" class="secondary">Refresh</button></div>
           <form id="workerForm" class="form-grid">
             <input id="first_name" placeholder="First name" required>
@@ -56,7 +78,7 @@
           <div class="table-wrap"><table><thead><tr><th>Name</th><th>Account</th><th>Salary</th><th>Status</th><th>Action</th></tr></thead><tbody id="workersTable"></tbody></table></div>
         </div>
 
-        <div class="card">
+        <div class="card" id="batchesSection">
           <div class="section-head"><h2>Payment Batches</h2><button id="createBatch" class="secondary">Create Batch</button></div>
           <div id="batchBuilder" class="batch-builder hidden">
             <div class="builder-head"><strong>Select workers</strong><span id="selectionSummary" class="muted">0 selected</span></div>
@@ -99,6 +121,7 @@
         <div class="table-wrap"><table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead><tbody id="auditTable"></tbody></table></div>
       </section>
     </main>
+    </div>
   </div>
   <script src="/app.js"></script>
 </body>
