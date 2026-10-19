@@ -55,7 +55,7 @@ function requireRole(...roles) {
 }
 
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 60 * 1000,
   limit: 10,
   standardHeaders: "draft-7",
   legacyHeaders: false,
