@@ -141,7 +141,7 @@ app.get("/api/banks",auth,async(req,res)=>res.json(await bankList()));
 app.get("/api/banks/resolve",auth,async(req,res)=>{
   const bank_code=String(req.query.bank_code||"");
   const account_number=String(req.query.account_number||"");
-  if(!/^\\d{10}$/.test(account_number)) return res.status(400).json({error:"Enter a 10-digit account number."});
+  if(!/^\d{10}$/.test(account_number)) return res.status(400).json({error:"Enter a 10-digit account number."});
   if(!(await bankList()).some(b=>b.code===bank_code)) return res.status(400).json({error:"Select a bank from the list."});
   if(!process.env.PAYSTACK_SECRET_KEY) return res.status(503).json({error:"Automatic account verification is not configured. Ask the administrator to add PAYSTACK_SECRET_KEY."});
   try{
