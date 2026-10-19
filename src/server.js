@@ -119,6 +119,42 @@ app.get("/api/workers", auth, (req, res) => {
   res.json(rows);
 });
 
+
+const FALLBACK_BANKS = [
+  ["044","Access Bank"],["023","Citibank Nigeria"],["050","Ecobank Nigeria"],["070","Fidelity Bank"],["011","First Bank of Nigeria"],["214","First City Monument Bank"],["058","Guaranty Trust Bank"],["030","Heritage Bank (legacy)"],["301","Jaiz Bank"],["082","Keystone Bank"],["101","Providus Bank"],["076","Polaris Bank"],["221","Stanbic IBTC Bank"],["068","Standard Chartered Bank"],["232","Sterling Bank"],["032","Union Bank of Nigeria"],["033","United Bank for Africa"],["215","Unity Bank"],["035","Wema Bank"],["057","Zenith Bank"],["999992","OPay"],["999991","PalmPay"],["090267","Kuda Bank"],["090405","Moniepoint MFB"]
+].map(([code,name])=>({code,name}));
+let bankCache = { at: 0, banks: [] };
+async function bankList(){
+  if(bankCache.banks.length && Date.now()-bankCache.at < 86400000) return bankCache.banks;
+  try {
+    const response = await fetch("https://api.paystack.co/bank?country=nigeria&perPage=200", {signal:AbortSignal.timeout(8000)});
+    if(!response.ok) throw new Error("Bank directory unavailable");
+    const data = await response.json();
+    if(!data.status || !Array.isArray(data.data)) throw new Error("Invalid bank directory");
+    const banks=data.data.filter(b=>b.active !== false && b.code && b.name).map(b=>({code:String(b.code),name:String(b.name)})).sort((x,y)=>x.name.localeCompare(y.name));
+    if(!banks.length) throw new Error("Empty bank directory");
+    bankCache={at:Date.now(),banks};
+    return banks;
+  } catch { return FALLBACK_BANKS.filter(b=>!b.name.includes("legacy")); }
+}
+app.get("/api/banks",auth,async(req,res)=>res.json(await bankList()));
+app.get("/api/banks/resolve",auth,async(req,res)=>{
+  const bank_code=String(req.query.bank_code||"");
+  const account_number=String(req.query.account_number||"");
+  if(!/^\\d{10}$/.test(account_number)) return res.status(400).json({error:"Enter a 10-digit account number."});
+  if(!(await bankList()).some(b=>b.code===bank_code)) return res.status(400).json({error:"Select a bank from the list."});
+  if(!process.env.PAYSTACK_SECRET_KEY) return res.status(503).json({error:"Automatic account verification is not configured. Ask the administrator to add PAYSTACK_SECRET_KEY."});
+  try{
+    const url=new URL("https://api.paystack.co/bank/resolve");
+    url.searchParams.set("account_number",account_number);
+    url.searchParams.set("bank_code",bank_code);
+    const response=await fetch(url,{headers:{Authorization:"Bearer "+process.env.PAYSTACK_SECRET_KEY},signal:AbortSignal.timeout(10000)});
+    const result=await response.json();
+    if(!response.ok || !result.status || !result.data?.account_name) return res.status(422).json({error:"Account could not be verified. Check the bank and account number."});
+    res.json({account_name:result.data.account_name,verified:true});
+  }catch{res.status(502).json({error:"Account verification service unavailable. Try again."});}
+});
+
 function cleanWorker(body) {
   const first_name = String(body.first_name || "").trim();
   const last_name = String(body.last_name || "").trim();
