@@ -17,7 +17,7 @@ async function loadBanks(){
 async function resolveAccount(){
   const code=$("bank_code").value, number=$("account_number").value.trim();
   accountVerified=false;$("account_name").value="";
-  if(!code || !/^\\d{10}$/.test(number)){$("accountStatus").textContent="Select a bank and enter a 10-digit account number.";return;}
+  if(!code || !/^\\d{10}$/.test(number)){$("accountStatus").textContent="";return;}
   $("accountStatus").textContent="Checking bank account...";
   try{
     const data=await api("/api/banks/resolve?bank_code="+encodeURIComponent(code)+"&account_number="+encodeURIComponent(number));
@@ -132,7 +132,7 @@ $("workerForm").addEventListener("submit", async e=>{
 });
 
 function resetWorkerForm(){
-  editingWorkerId=null; accountVerified=false; $("accountStatus").textContent="Select a bank and enter a 10-digit account number."; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
+  editingWorkerId=null; accountVerified=false; $("accountStatus").textContent=""; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
 }
 $("cancelEdit").onclick=resetWorkerForm;
 
