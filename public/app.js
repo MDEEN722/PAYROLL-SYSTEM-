@@ -6,6 +6,34 @@ let editingWorkerId = null;
 let workerCache = [];
 let currentUser = null;
 let selectedWorkerIds = new Set();
+let accountVerified = false;
+let verificationTimer;
+async function loadBanks(){
+  try{
+    const banks=await api("/api/banks");
+    $("bank_code").innerHTML='<option value="">Select Bank Name</option>'+banks.map(b=>`<option value="${escapeHtml(b.code)}">${escapeHtml(b.name)}</option>`).join("");
+  }catch(e){$("accountStatus").textContent="Unable to load banks: "+e.message;}
+}
+async function resolveAccount(){
+  const code=$("bank_code").value, number=$("account_number").value.trim();
+  accountVerified=false;$("account_name").value="";
+  if(!code || !/^\\d{10}$/.test(number)){$("accountStatus").textContent="Select a bank and enter a 10-digit account number.";return;}
+  $("accountStatus").textContent="Checking bank account...";
+  try{
+    const data=await api("/api/banks/resolve?bank_code="+encodeURIComponent(code)+"&account_number="+encodeURIComponent(number));
+    if($("bank_code").value!==code || $("account_number").value.trim()!==number)return;
+    $("account_name").value=data.account_name;
+    accountVerified=true;
+    $("accountStatus").textContent="Account name confirmed by bank verification service.";
+  }catch(e){$("accountStatus").textContent=e.message;}
+}
+for(const id of ["bank_code","account_number"]){
+  $(id).addEventListener("input",()=>{
+    clearTimeout(verificationTimer);
+    accountVerified=false;$("account_name").value="";
+    verificationTimer=setTimeout(resolveAccount,500);
+  });
+}
 
 async function api(url, options={}) {
   const res = await fetch(url, { headers: {"Content-Type":"application/json"}, ...options });
@@ -24,7 +52,7 @@ async function load() {
   $("payAll").classList.toggle("hidden",me.user.role!=="admin");
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
-  await Promise.all([dashboard(), workers(), batches()]);
+  await Promise.all([dashboard(), workers(), batches(), loadBanks()]);
 }
 
 function showLogin(){ $("login").classList.remove("hidden"); $("app").classList.add("hidden"); }
@@ -93,6 +121,7 @@ $("logout").onclick=async()=>{await api("/api/logout",{method:"POST"});showLogin
 
 $("workerForm").addEventListener("submit", async e=>{
   e.preventDefault();
+  if(!accountVerified){alert("Verify the bank account before saving the worker.");return;}
   const body={first_name:$("first_name").value,last_name:$("last_name").value,email:$("emailW").value,phone:$("phone").value,bank_code:$("bank_code").value,account_number:$("account_number").value,account_name:$("account_name").value,salary:Number($("salary").value)};
   try{
     if(editingWorkerId) await api("/api/workers/"+editingWorkerId,{method:"PUT",body:JSON.stringify(body)});
@@ -103,7 +132,7 @@ $("workerForm").addEventListener("submit", async e=>{
 });
 
 function resetWorkerForm(){
-  editingWorkerId=null; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
+  editingWorkerId=null; accountVerified=false; $("accountStatus").textContent="Select a bank and enter a 10-digit account number."; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
 }
 $("cancelEdit").onclick=resetWorkerForm;
 
@@ -112,7 +141,7 @@ $("workersTable").addEventListener("click", async e=>{
   if(editId){
     const w=workerCache.find(x=>x.id===Number(editId));
     if(!w)return;
-    editingWorkerId=w.id;
+    editingWorkerId=w.id; accountVerified=false; $("accountStatus").textContent="Re-enter the account number to verify it.";
     $("first_name").value=w.first_name; $("last_name").value=w.last_name; $("emailW").value=w.email||""; $("phone").value=w.phone||"";
     $("bank_code").value=w.bank_code; $("account_number").value=""; $("account_name").value=w.account_name; $("salary").value=w.salary;
     $("account_number").placeholder="Re-enter 10-digit account number";
