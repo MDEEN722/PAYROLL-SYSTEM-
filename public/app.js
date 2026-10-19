@@ -48,6 +48,8 @@ async function load() {
   currentUser=me.user;
   $("currentUser").textContent=`${me.user.name} • ${me.user.role}`;
   $("auditButton").classList.toggle("hidden",me.user.role!=="admin");
+  $("navAudit").classList.toggle("hidden",me.user.role!=="admin");
+  $("navUsers").classList.toggle("hidden",me.user.role!=="admin");
   $("usersButton").classList.toggle("hidden",me.user.role!=="admin");
   $("payAll").classList.toggle("hidden",me.user.role!=="admin");
   $("login").classList.add("hidden");
@@ -55,6 +57,19 @@ async function load() {
   await Promise.all([dashboard(), workers(), batches(), loadBanks()]);
 }
 
+function renderPayrollChart(d){
+  const paid=Number(d.paid)||0;
+  const pendingCount=Number(d.pending)||0;
+  $("payrollChart").innerHTML=`<div class="insight-row"><div class="insight-label"><span>Successfully paid (sandbox)</span><strong>${money(paid)}</strong></div><div class="insight-track"><div class="insight-fill" style="width:${paid?100:0}%"></div></div></div><div class="insight-row pending"><div class="insight-label"><span>Pending payment records</span><strong>${pendingCount}</strong></div><div class="insight-track"><div class="insight-fill" style="width:${Math.min(100,pendingCount/Math.max(Number(d.workers)||1,1)*100)}%"></div></div></div>`;
+}
+document.querySelectorAll("[data-nav]").forEach(button=>button.addEventListener("click",()=>{
+  document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b===button));
+  $(button.dataset.nav)?.scrollIntoView({behavior:"smooth",block:"start"});
+}));
+document.querySelectorAll("[data-action]").forEach(button=>button.addEventListener("click",()=>{
+  const target={reports:"reportsButton",users:"usersButton",audit:"auditButton"}[button.dataset.action];
+  if(target) $(target).click();
+}));
 function showLogin(){ $("login").classList.remove("hidden"); $("app").classList.add("hidden"); }
 
 async function dashboard(){
@@ -63,6 +78,7 @@ async function dashboard(){
   $("batchesCount").textContent=d.batches;
   $("paidTotal").textContent=money(d.paid);
   $("pendingCount").textContent=d.pending;
+  renderPayrollChart(d);
 }
 
 async function workers(){
@@ -79,6 +95,7 @@ async function workers(){
 
 async function batches(){
   const rows=await api("/api/batches");
+  $("recentBatches").innerHTML=rows.length ? rows.slice(0,4).map(b=>`<div class="recent-batch"><div><strong>${escapeHtml(b.batch_name)}</strong><small>${escapeHtml(b.payment_date)} · ${b.total_workers} workers</small></div><span class="status ${escapeHtml(b.status)}">${escapeHtml(b.status.replaceAll("_"," "))}</span></div>`).join("") : '<p class="muted">No batches yet. Create your first payroll batch below.</p>';
   $("batchesTable").innerHTML=rows.length ? rows.map(b=>`<tr class="${Number(selectedBatchId)===b.id ? "selected-row" : ""}">
     <td>${escapeHtml(b.batch_name)}<br><small>${escapeHtml(b.payment_date)}</small></td>
     <td>${b.total_workers}</td>
