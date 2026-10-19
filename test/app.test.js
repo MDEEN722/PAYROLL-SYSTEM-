@@ -94,3 +94,9 @@ test("admin cannot deactivate own account", async () => {
   }, cookie);
   assert.equal(r.res.status, 400);
 });
+
+test("bank lookup rejects invalid account number", async () => {
+  const cookie = await login();
+  const response = await request("/api/banks/resolve?bank_code=044&account_number=12345", {}, cookie);
+  assert.equal(response.res.status, 400);
+});
