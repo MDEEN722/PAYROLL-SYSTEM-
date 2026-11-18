@@ -65,11 +65,26 @@ function renderPayrollChart(d){
   const pendingCount=Number(d.pending)||0;
   $("payrollChart").innerHTML=`<div class="insight-row"><div class="insight-label"><span>Successfully paid (sandbox)</span><strong>${money(paid)}</strong></div><div class="insight-track"><div class="insight-fill" style="width:${paid?100:0}%"></div></div></div><div class="insight-row pending"><div class="insight-label"><span>Pending payment records</span><strong>${pendingCount}</strong></div><div class="insight-track"><div class="insight-fill" style="width:${Math.min(100,pendingCount/Math.max(Number(d.workers)||1,1)*100)}%"></div></div></div>`;
 }
+function closeSidebar(){
+  document.body.classList.remove("sidebar-open");
+  $("menuToggle").setAttribute("aria-expanded","false");
+  $("menuToggle").setAttribute("aria-label","Open navigation menu");
+}
+$("menuToggle").addEventListener("click",()=>{
+  const open=document.body.classList.toggle("sidebar-open");
+  $("menuToggle").setAttribute("aria-expanded",String(open));
+  $("menuToggle").setAttribute("aria-label",open?"Close navigation menu":"Open navigation menu");
+});
+$("sidebarOverlay").addEventListener("click",closeSidebar);
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSidebar();});
+
 document.querySelectorAll("[data-nav]").forEach(button=>button.addEventListener("click",()=>{
+  closeSidebar();
   document.querySelectorAll("[data-nav]").forEach(b=>b.classList.toggle("active",b===button));
   $(button.dataset.nav)?.scrollIntoView({behavior:"smooth",block:"start"});
 }));
 document.querySelectorAll("[data-action]").forEach(button=>button.addEventListener("click",()=>{
+  closeSidebar();
   const target={reports:"reportsButton",users:"usersButton",audit:"auditButton"}[button.dataset.action];
   if(target) $(target).click();
 }));
