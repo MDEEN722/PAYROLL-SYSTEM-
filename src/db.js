@@ -69,9 +69,17 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 const email = process.env.ADMIN_EMAIL || "admin@example.com";
 const password = process.env.ADMIN_PASSWORD || "ChangeMe123!";
-const exists = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+const configuredCredentials = Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD);
+const exists = db.prepare("SELECT id FROM users WHERE lower(email) = lower(?)").get(email);
+const legacyAdmin = configuredCredentials
+  ? db.prepare("SELECT id FROM users WHERE lower(email) = lower(?)").get("admin@example.com")
+  : null;
 
-if (!exists) {
+if (configuredCredentials && legacyAdmin && !exists) {
+  // Migrate the original demo administrator to the configured credentials.
+  db.prepare("UPDATE users SET email=?, password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
+    .run(email, bcrypt.hashSync(password, 12), legacyAdmin.id);
+} else if (!exists) {
   const hash = bcrypt.hashSync(password, 12);
   db.prepare("INSERT INTO users (name,email,password_hash,role) VALUES (?,?,?,?)")
     .run("System Administrator", email, hash, "admin");
