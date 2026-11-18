@@ -22,8 +22,4 @@ A professional payroll management web application for managing workers, payment 
 4. Run `npm start`.
 5. Open `http://localhost:3000`.
 
-Demo login:
-- Email: `admin@example.com`
-- Password: `ChangeMe123!`
-
-Change the demo credentials before any real deployment.
+Admin credentials are configured through the `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables. Do not commit real credentials to the repository. For an existing deployment, update both variables in the hosting provider and restart the application.
