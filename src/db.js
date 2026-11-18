@@ -67,16 +67,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 `);
 
-const email = process.env.ADMIN_EMAIL || "admin@example.com";
+const email = process.env.ADMIN_EMAIL || "kundilimi@gmail.com";
 const password = process.env.ADMIN_PASSWORD || "ChangeMe123!";
-const configuredCredentials = Boolean(process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD);
 const exists = db.prepare("SELECT id FROM users WHERE lower(email) = lower(?)").get(email);
-const legacyAdmin = configuredCredentials
+const legacyAdmin = email.toLowerCase() !== "admin@example.com"
   ? db.prepare("SELECT id FROM users WHERE lower(email) = lower(?)").get("admin@example.com")
   : null;
 
-if (configuredCredentials && legacyAdmin && !exists) {
-  // Migrate the original demo administrator to the configured credentials.
+if (legacyAdmin && !exists) {
+  // Migrate the original demo administrator to the configured default credentials.
   db.prepare("UPDATE users SET email=?, password_hash=?, updated_at=CURRENT_TIMESTAMP WHERE id=?")
     .run(email, bcrypt.hashSync(password, 12), legacyAdmin.id);
 } else if (!exists) {
