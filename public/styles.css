@@ -72,8 +72,7 @@
 }
 
 
-/* Salary clarity and persistent dark theme */
-#workerForm .salary-words{grid-column:1/-1;min-height:18px;margin-top:-5px;font-size:12px;line-height:1.5;color:#667085}
+/* Persistent dark theme */
 body.dark-theme{background:#101828;color:#eaecf0;color-scheme:dark}
 body.dark-theme .topbar{background:#0b1220;border-bottom:1px solid #344054}
 body.dark-theme .card,body.dark-theme .stat,body.dark-theme .sidebar{background:#1d2939;color:#eaecf0;border-color:#344054}
@@ -96,5 +95,4 @@ body.dark-theme .status.active,body.dark-theme .status.completed,body.dark-theme
 body.dark-theme .status.failed,body.dark-theme .status.partially_failed{background:#551b1b;color:#fda29b}
 body.dark-theme .status.processing,body.dark-theme .status.pending,body.dark-theme .status.draft{background:#553b12;color:#fedf89}
 body.dark-theme .status.pending_approval{background:#312e81;color:#c7d2fe}
-body.dark-theme #workerForm .salary-words{color:#98a2b3}
 body.dark-theme .empty{color:#98a2b3}
