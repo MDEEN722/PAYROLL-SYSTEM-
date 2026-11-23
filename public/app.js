@@ -1,27 +1,9 @@
 const $ = id => document.getElementById(id);
 const money = n => "₦" + Number(n || 0).toLocaleString("en-NG",{minimumFractionDigits:2});
 function parseSalary(value){return Number(String(value||"").replace(/[^0-9]/g,""))||0;}
-function amountInWords(value){
-  const n=parseSalary(value);
-  if(!n)return "";
-  const small=["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
-  const tens=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
-  function underThousand(x){
-    let out=[];
-    if(x>=100){out.push(small[Math.floor(x/100)]+" Hundred");x%=100;}
-    if(x>=20){out.push(tens[Math.floor(x/10)]+(x%10?"-"+small[x%10]:""));x=0;}
-    if(x>0)out.push(small[x]);
-    return out.join(" ");
-  }
-  const units=["","Thousand","Million","Billion","Trillion"];
-  let parts=[],i=0,remaining=n;
-  while(remaining>0&&i<units.length){const group=remaining%1000;if(group)parts.unshift(underThousand(group)+(units[i]?" "+units[i]:""));remaining=Math.floor(remaining/1000);i++;}
-  return parts.join(" ")+" Naira Only";
-}
 function formatSalaryField(){
   const field=$("salary"),digits=field.value.replace(/[^0-9]/g,"");
   field.value=digits?Number(digits).toLocaleString("en-NG"):"";
-  $("salaryWords").textContent=digits?"Amount in words: "+amountInWords(digits):"Enter the salary in naira; the amount in words will appear here.";
 }
 function applyTheme(dark){
   document.body.classList.toggle("dark-theme",dark);
@@ -205,7 +187,7 @@ $("workerForm").addEventListener("submit", async e=>{
 
 function resetWorkerForm(){
   verificationRequestId++; clearTimeout(verificationTimer);
-  editingWorkerId=null; accountVerified=false; $("accountStatus").textContent=""; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("salaryWords").textContent="Enter the salary in naira; the amount in words will appear here."; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
+  editingWorkerId=null; accountVerified=false; $("accountStatus").textContent=""; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
 }
 $("cancelEdit").onclick=resetWorkerForm;
 
