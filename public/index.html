@@ -24,7 +24,7 @@
   <div id="app" class="hidden">
     <header class="topbar">
       <div class="topbar-brand"><button id="menuToggle" class="menu-toggle" type="button" aria-label="Open navigation menu" aria-controls="sidebar" aria-expanded="false">☰</button><div><strong>PAYROLL<span>PRO</span></strong><small> Payroll Management</small></div></div>
-      <div class="top-actions"><span id="currentUser" class="user-badge"></span><button id="reportsButton" class="secondary">Reports</button><button id="passwordButton" class="secondary">Password</button><button id="usersButton" class="secondary">Users</button><button id="auditButton" class="secondary">Audit Log</button><button id="logout" class="secondary">Logout</button></div>
+      <div class="top-actions"><span id="currentUser" class="user-badge"></span></div>
     </header>
     <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
     <div class="app-layout">
@@ -37,6 +37,8 @@
         <button type="button" class="nav-link" data-action="reports">▥ <span>Reports</span></button>
         <button type="button" class="nav-link" data-action="users" id="navUsers">♧ <span>Users</span></button>
         <button type="button" class="nav-link" data-action="audit" id="navAudit">◷ <span>Audit Log</span></button>
+        <button type="button" class="nav-link" data-action="password">⚿ <span>Change Password</span></button>
+        <button type="button" class="nav-link" data-action="logout">↪ <span>Logout</span></button>
         <div class="sidebar-bottom"><strong>Sandbox mode</strong><small>Demo payments only. No real funds move.</small></div>
       </aside>
       <main class="container" id="dashboardSection">
