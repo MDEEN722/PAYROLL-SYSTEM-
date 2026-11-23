@@ -37,6 +37,7 @@
         <button type="button" class="nav-link" data-action="reports">▥ <span>Reports</span></button>
         <button type="button" class="nav-link" data-action="users" id="navUsers">♧ <span>Users</span></button>
         <button type="button" class="nav-link" data-action="audit" id="navAudit">◷ <span>Audit Log</span></button>
+        <button type="button" class="nav-link" id="themeToggle" aria-pressed="false">🌙 <span id="themeToggleLabel">Dark Mode</span></button>
         <button type="button" class="nav-link" data-action="password">⚿ <span>Change Password</span></button>
         <button type="button" class="nav-link" data-action="logout">↪ <span>Logout</span></button>
         <div class="sidebar-bottom"><strong>Sandbox mode</strong><small>Demo payments only. No real funds move.</small></div>
@@ -75,7 +76,8 @@
             <select id="bank_code" required><option value="">Select Bank Name</option></select>
             <input id="account_number" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10-digit account number" required>
             <input id="account_name" placeholder="Account name (auto-filled when verified)" required readonly><span id="accountStatus" class="account-status" role="status" aria-live="polite"></span>
-            <input id="salary" type="number" min="1" placeholder="Monthly salary" required>
+            <input id="salary" type="text" inputmode="numeric" autocomplete="off" placeholder="Monthly salary (₦)" required>
+            <span id="salaryWords" class="salary-words" aria-live="polite">Enter the salary in naira; the amount in words will appear here.</span>
             <button id="workerSubmit" type="submit">Add Worker</button><button id="cancelEdit" type="button" class="secondary hidden">Cancel Edit</button>
           </form>
           <div class="table-wrap"><table><thead><tr><th>Name</th><th>Account</th><th>Salary</th><th>Status</th><th>Action</th></tr></thead><tbody id="workersTable"></tbody></table></div>
