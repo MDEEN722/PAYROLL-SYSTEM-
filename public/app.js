@@ -26,7 +26,7 @@ function formatSalaryField(){
 function applyTheme(dark){
   document.body.classList.toggle("dark-theme",dark);
   const toggle=$("themeToggle");
-  if(toggle){toggle.setAttribute("aria-pressed",String(dark));$("themeToggleLabel").textContent=dark?"Light Mode":"Dark Mode";toggle.querySelector("span:first-child")?.replaceWith(document.createTextNode(dark?"☀️ ":"🌙 "));}
+  if(toggle){toggle.setAttribute("aria-pressed",String(dark));toggle.innerHTML=(dark?"☀️ ":"🌙 ")+"<span id=\"themeToggleLabel\">"+(dark?"Light Mode":"Dark Mode")+"</span>";}
 }
 const savedTheme=localStorage.getItem("payrollpro-theme")==="dark";
 applyTheme(savedTheme);
