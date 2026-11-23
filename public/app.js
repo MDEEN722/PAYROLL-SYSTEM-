@@ -1,5 +1,35 @@
 const $ = id => document.getElementById(id);
 const money = n => "₦" + Number(n || 0).toLocaleString("en-NG",{minimumFractionDigits:2});
+function parseSalary(value){return Number(String(value||"").replace(/[^0-9]/g,""))||0;}
+function amountInWords(value){
+  const n=parseSalary(value);
+  if(!n)return "";
+  const small=["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine","Ten","Eleven","Twelve","Thirteen","Fourteen","Fifteen","Sixteen","Seventeen","Eighteen","Nineteen"];
+  const tens=["","","Twenty","Thirty","Forty","Fifty","Sixty","Seventy","Eighty","Ninety"];
+  function underThousand(x){
+    let out=[];
+    if(x>=100){out.push(small[Math.floor(x/100)]+" Hundred");x%=100;}
+    if(x>=20){out.push(tens[Math.floor(x/10)]+(x%10?"-"+small[x%10]:""));x=0;}
+    if(x>0)out.push(small[x]);
+    return out.join(" ");
+  }
+  const units=["","Thousand","Million","Billion","Trillion"];
+  let parts=[],i=0,remaining=n;
+  while(remaining>0&&i<units.length){const group=remaining%1000;if(group)parts.unshift(underThousand(group)+(units[i]?" "+units[i]:""));remaining=Math.floor(remaining/1000);i++;}
+  return parts.join(" ")+" Naira Only";
+}
+function formatSalaryField(){
+  const field=$("salary"),digits=field.value.replace(/[^0-9]/g,"");
+  field.value=digits?Number(digits).toLocaleString("en-NG"):"";
+  $("salaryWords").textContent=digits?"Amount in words: "+amountInWords(digits):"Enter the salary in naira; the amount in words will appear here.";
+}
+function applyTheme(dark){
+  document.body.classList.toggle("dark-theme",dark);
+  const toggle=$("themeToggle");
+  if(toggle){toggle.setAttribute("aria-pressed",String(dark));$("themeToggleLabel").textContent=dark?"Light Mode":"Dark Mode";toggle.querySelector("span:first-child")?.replaceWith(document.createTextNode(dark?"☀️ ":"🌙 "));}
+}
+const savedTheme=localStorage.getItem("payrollpro-theme")==="dark";
+applyTheme(savedTheme);
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selectedBatchId = null;
 let editingWorkerId = null;
@@ -65,6 +95,13 @@ function renderPayrollChart(d){
   const pendingCount=Number(d.pending)||0;
   $("payrollChart").innerHTML=`<div class="insight-row"><div class="insight-label"><span>Successfully paid (sandbox)</span><strong>${money(paid)}</strong></div><div class="insight-track"><div class="insight-fill" style="width:${paid?100:0}%"></div></div></div><div class="insight-row pending"><div class="insight-label"><span>Pending payment records</span><strong>${pendingCount}</strong></div><div class="insight-track"><div class="insight-fill" style="width:${Math.min(100,pendingCount/Math.max(Number(d.workers)||1,1)*100)}%"></div></div></div>`;
 }
+$("themeToggle").addEventListener("click",()=>{
+  const dark=!document.body.classList.contains("dark-theme");
+  localStorage.setItem("payrollpro-theme",dark?"dark":"light");
+  applyTheme(dark);
+});
+$("salary").addEventListener("input",formatSalaryField);
+
 function closeSidebar(){
   document.body.classList.remove("sidebar-open");
   $("menuToggle").setAttribute("aria-expanded","false");
@@ -157,7 +194,7 @@ $("logout").onclick=async()=>{await api("/api/logout",{method:"POST"});showLogin
 $("workerForm").addEventListener("submit", async e=>{
   e.preventDefault();
   if(!accountVerified){alert("Verify the bank account before saving the worker.");return;}
-  const body={first_name:$("first_name").value,last_name:$("last_name").value,email:$("emailW").value,phone:$("phone").value,bank_code:$("bank_code").value,account_number:$("account_number").value,account_name:$("account_name").value,salary:Number($("salary").value)};
+  const body={first_name:$("first_name").value,last_name:$("last_name").value,email:$("emailW").value,phone:$("phone").value,bank_code:$("bank_code").value,account_number:$("account_number").value,account_name:$("account_name").value,salary:parseSalary($("salary").value)};
   try{
     if(editingWorkerId) await api("/api/workers/"+editingWorkerId,{method:"PUT",body:JSON.stringify(body)});
     else await api("/api/workers",{method:"POST",body:JSON.stringify(body)});
@@ -168,7 +205,7 @@ $("workerForm").addEventListener("submit", async e=>{
 
 function resetWorkerForm(){
   verificationRequestId++; clearTimeout(verificationTimer);
-  editingWorkerId=null; accountVerified=false; $("accountStatus").textContent=""; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
+  editingWorkerId=null; accountVerified=false; $("accountStatus").textContent=""; $("workerForm").reset(); $("account_number").placeholder="10-digit account number"; $("salaryWords").textContent="Enter the salary in naira; the amount in words will appear here."; $("workerSubmit").textContent="Add Worker"; $("cancelEdit").classList.add("hidden");
 }
 $("cancelEdit").onclick=resetWorkerForm;
 
@@ -180,7 +217,7 @@ $("workersTable").addEventListener("click", async e=>{
     verificationRequestId++; clearTimeout(verificationTimer);
     editingWorkerId=w.id; accountVerified=false; $("accountStatus").textContent="Re-enter the account number to verify it.";
     $("first_name").value=w.first_name; $("last_name").value=w.last_name; $("emailW").value=w.email||""; $("phone").value=w.phone||"";
-    $("bank_code").value=w.bank_code; $("account_number").value=""; $("account_name").value=w.account_name; $("salary").value=w.salary;
+    $("bank_code").value=w.bank_code; $("account_number").value=""; $("account_name").value=w.account_name; $("salary").value=Number(w.salary).toLocaleString("en-NG"); formatSalaryField();
     $("account_number").placeholder="Re-enter 10-digit account number";
     $("workerSubmit").textContent="Save Changes"; $("cancelEdit").classList.remove("hidden"); $("first_name").focus();
     return;
