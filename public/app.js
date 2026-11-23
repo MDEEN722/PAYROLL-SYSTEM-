@@ -10,7 +10,8 @@ function applyTheme(dark){
   const toggle=$("themeToggle");
   if(toggle){toggle.setAttribute("aria-pressed",String(dark));toggle.innerHTML=(dark?"☀️ ":"🌙 ")+"<span id=\"themeToggleLabel\">"+(dark?"Light Mode":"Dark Mode")+"</span>";}
 }
-const savedTheme=localStorage.getItem("payrollpro-theme")==="dark";
+let savedTheme=false;
+try{savedTheme=localStorage.getItem("payrollpro-theme")==="dark";}catch{}
 applyTheme(savedTheme);
 const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 let selectedBatchId = null;
@@ -42,12 +43,14 @@ async function resolveAccount(){
   }catch(e){if(requestId===verificationRequestId) $("accountStatus").textContent=e.message;}
 }
 for(const id of ["bank_code","account_number"]){
-  $(id).addEventListener("input",()=>{
+  const refreshVerification=()=>{
     clearTimeout(verificationTimer);
     verificationRequestId++;
     accountVerified=false;$("account_name").value="";
     verificationTimer=setTimeout(resolveAccount,500);
-  });
+  };
+  $(id).addEventListener("input",refreshVerification);
+  $(id).addEventListener("change",refreshVerification);
 }
 
 async function api(url, options={}) {
@@ -66,7 +69,7 @@ async function load() {
   $("navAudit").classList.toggle("hidden",me.user.role!=="admin");
   $("navUsers").classList.toggle("hidden",me.user.role!=="admin");
   $("usersButton").classList.toggle("hidden",me.user.role!=="admin");
-  $("payAll").classList.toggle("hidden",me.user.role!=="admin");
+  $("payAll").classList.add("hidden");
   $("login").classList.add("hidden");
   $("app").classList.remove("hidden");
   await Promise.all([dashboard(), workers(), batches(), loadBanks()]);
@@ -79,7 +82,7 @@ function renderPayrollChart(d){
 }
 $("themeToggle").addEventListener("click",()=>{
   const dark=!document.body.classList.contains("dark-theme");
-  localStorage.setItem("payrollpro-theme",dark?"dark":"light");
+  try{localStorage.setItem("payrollpro-theme",dark?"dark":"light");}catch{}
   applyTheme(dark);
 });
 $("salary").addEventListener("input",formatSalaryField);
