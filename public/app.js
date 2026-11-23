@@ -85,7 +85,7 @@ document.querySelectorAll("[data-nav]").forEach(button=>button.addEventListener(
 }));
 document.querySelectorAll("[data-action]").forEach(button=>button.addEventListener("click",()=>{
   closeSidebar();
-  const target={reports:"reportsButton",users:"usersButton",audit:"auditButton"}[button.dataset.action];
+  const target={reports:"reportsButton",users:"usersButton",audit:"auditButton",password:"passwordButton",logout:"logout"}[button.dataset.action];
   if(target) $(target).click();
 }));
 function showLogin(){ $("login").classList.remove("hidden"); $("app").classList.add("hidden"); }
